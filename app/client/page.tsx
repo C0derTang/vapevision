@@ -417,31 +417,37 @@ export default function ClientPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-gray-100 flex flex-col">
+    <div className="min-h-screen bg-[#080808] text-gray-100 flex flex-col relative overflow-hidden">
+      {/* Grid background */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{
+        backgroundImage: `linear-gradient(#2dd4bf 1px, transparent 1px), linear-gradient(90deg, #2dd4bf 1px, transparent 1px)`,
+        backgroundSize: '60px 60px'
+      }} />
+
       {/* Header */}
-      <header className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+      <header className="px-6 py-4 border-b border-gray-900 flex items-center justify-between relative z-10">
         <Link
           href="/"
-          className="text-gray-400 hover:text-white transition-colors text-sm"
+          className="font-mono text-xs tracking-widest text-gray-500 hover:text-teal-400 uppercase transition-colors"
         >
-          Back to Home
+          ← Back to Home
         </Link>
         <div className="flex items-center gap-4">
           {cameraId && (
-            <span className="text-xs text-gray-500 font-mono">{cameraId}</span>
+            <span className="font-mono text-xs text-gray-600 tracking-widest">{cameraId}</span>
           )}
         </div>
       </header>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6">
+      <main className="flex-1 flex flex-col items-center justify-center p-6 relative z-10">
         {error ? (
-          <div className="text-center space-y-4 max-w-md">
-            <div className="text-red-500 text-xl">Camera Error</div>
-            <p className="text-gray-400">{error}</p>
+          <div className="text-center space-y-6 max-w-md">
+            <div className="font-mono text-red-400 text-xl tracking-widest uppercase">Camera Error</div>
+            <p className="text-gray-500 font-mono text-sm">{error}</p>
             <Link
               href="/"
-              className="inline-block px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors"
+              className="inline-block px-6 py-3 bg-gray-900 hover:bg-gray-800 text-gray-300 font-mono text-sm tracking-widest uppercase border border-gray-800 transition-all"
             >
               Go Back
             </Link>
@@ -449,15 +455,15 @@ export default function ClientPage() {
         ) : (
           <div className="relative w-full max-w-2xl">
             {/* Status badge */}
-            <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${getStatusColor()}`} />
-              <span className="text-sm font-medium text-white bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm">
+            <div className="absolute top-4 left-4 z-20 flex items-center gap-3">
+              <div className={`w-2 h-2 rounded-full ${getStatusColor()} ${status === 'Monitoring' ? 'animate-pulse' : ''}`} />
+              <span className="font-mono text-xs tracking-widest text-white bg-black/70 px-3 py-1.5 backdrop-blur-sm border border-gray-800 uppercase">
                 {status}
               </span>
             </div>
 
             {/* Video and overlay container */}
-            <div className="relative rounded-lg overflow-hidden bg-black">
+            <div className="relative rounded-lg overflow-hidden bg-black border border-gray-800">
               <video
                 ref={videoRef}
                 className="w-full h-auto"
@@ -473,22 +479,31 @@ export default function ClientPage() {
 
             {/* Toast notification */}
             {toast && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-pulse">
-                {toast}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-teal-400 text-black font-mono text-sm px-6 py-3 tracking-widest uppercase animate-pulse">
+                Alert Captured
               </div>
             )}
 
             {/* Detection info */}
-            <div className="mt-6 text-center text-sm space-y-2">
-              <p className={nearFaceActive ? "text-green-400 animate-pulse" : "text-gray-500"}>
-                Hand near face (wrist-to-face distance &lt; {FACE_DIST_THRESHOLD})
-              </p>
-              <p className={pinchActive ? "text-green-400 animate-pulse" : "text-gray-500"}>
-                Pinch gesture (thumb-index distance &lt; {PINCH_DIST_THRESHOLD})
-              </p>
-              <p className={isFlashing ? "text-green-400 animate-pulse" : "text-gray-500"}>
-                Sustained for {TRIGGER_TIME}ms triggers capture
-              </p>
+            <div className="mt-8 grid grid-cols-3 gap-6 text-center font-mono text-xs">
+              <div className="space-y-2">
+                <div className={`text-lg font-bold ${nearFaceActive ? 'text-teal-400' : 'text-gray-600'}`}>
+                  {nearFaceActive ? 'ACTIVE' : '—'}
+                </div>
+                <div className="text-gray-600 tracking-widest uppercase">Near Face</div>
+              </div>
+              <div className="space-y-2">
+                <div className={`text-lg font-bold ${pinchActive ? 'text-teal-400' : 'text-gray-600'}`}>
+                  {pinchActive ? 'PINCH' : '—'}
+                </div>
+                <div className="text-gray-600 tracking-widest uppercase">Gesture</div>
+              </div>
+              <div className="space-y-2">
+                <div className={`text-lg font-bold ${isFlashing ? 'text-teal-400 animate-pulse' : 'text-gray-600'}`}>
+                  {TRIGGER_TIME}ms
+                </div>
+                <div className="text-gray-600 tracking-widest uppercase">Trigger</div>
+              </div>
             </div>
           </div>
         )}
