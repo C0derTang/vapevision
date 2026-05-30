@@ -108,6 +108,12 @@ export default function AdminPage() {
     if (!deleteConfirmId) return;
     setDeleting(true);
     try {
+      // If deleting the alert that's currently in modal, advance to next
+      if (selectedAlert && selectedAlert.id === deleteConfirmId) {
+        const currentIndex = filteredAlerts.findIndex(a => a.id === deleteConfirmId);
+        const nextAlert = filteredAlerts[currentIndex + 1] || filteredAlerts[currentIndex - 1] || null;
+        setSelectedAlert(nextAlert);
+      }
       await deleteDoc(doc(db, "alerts", deleteConfirmId));
       setDeleteConfirmId(null);
     } catch (err) {
@@ -129,8 +135,11 @@ export default function AdminPage() {
           originalAlertId: alert.id,
         });
       }
+      // Find next alert before deleting
+      const currentIndex = filteredAlerts.findIndex(a => a.id === alert.id);
+      const nextAlert = filteredAlerts[currentIndex + 1] || filteredAlerts[currentIndex - 1] || null;
       await deleteDoc(doc(db, "alerts", alert.id));
-      setSelectedAlert(null);
+      setSelectedAlert(nextAlert);
     } catch (err) {
       console.error("Verify error:", err);
     } finally {
