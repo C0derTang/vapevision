@@ -7,8 +7,8 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 // Detection thresholds
 const REFERENCE_HAND_SIZE = 0.15; // normalized units, ~arm's length
-const FACE_DIST_THRESHOLD = 0.2;
-const PINCH_DIST_THRESHOLD = 0.1;
+const FACE_DIST_THRESHOLD = 0.4;
+const PINCH_DIST_THRESHOLD = 0.05;
 const TRIGGER_TIME = 1500;
 const FACE_CENTER = { x: 0.5, y: 0.1 };
 
@@ -73,14 +73,28 @@ export default function ClientPage() {
   // Check if hand is near face using actual face landmarks
   const isHandNearFace = (handLandmarks: any[], threshold: number) => {
     if (faceLandmarksRef.current.length === 0) return false;
-    const nose = faceLandmarksRef.current[1]; // landmark 1 = nose tip in FaceMesh
+    const faceLms = faceLandmarksRef.current;
+    const nose = faceLms[1]; // landmark 1 = nose tip
+    const upperLip = faceLms[13]; // upper lip
+    const lowerLip = faceLms[14]; // lower lip
+
     const wrist = handLandmarks[0];
     const thumbTip = handLandmarks[4];
     const indexTip = handLandmarks[8];
 
     const wristDist = distance(wrist, nose);
     const belowNose = thumbTip.y > nose.y && indexTip.y > nose.y;
-    return wristDist < threshold && belowNose;
+
+    // Something between fingers: thumb and index at similar Z (both pointing forward)
+    const zDiff = Math.abs((thumbTip.z || 0) - (indexTip.z || 0));
+    const fingersZAligned = zDiff < 0.05;
+
+    // Lips not visible: wrist is between lip midpoint and nose (hand covering mouth)
+    const lipMidY = (upperLip.y + lowerLip.y) / 2;
+    const noseY = nose.y;
+    const lipsBlocked = wrist.y > lipMidY && wrist.y < noseY;
+
+    return wristDist < threshold && belowNose && fingersZAligned && lipsBlocked;
   };
 
   // Check if pinch gesture
