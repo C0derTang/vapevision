@@ -35,6 +35,7 @@ export default function ClientPage() {
   const triggerStartRef = useRef<number | null>(null);
   const handsInstanceRef = useRef<any>(null);
   const cameraInstanceRef = useRef<any>(null);
+  const mountedRef = useRef(true);
 
   // Get or create camera ID
   useEffect(() => {
@@ -171,16 +172,17 @@ export default function ClientPage() {
 
   // Initialize camera and MediaPipe
   useEffect(() => {
+    mountedRef.current = true;
+
     const video = videoRef.current;
     const overlayCanvas = overlayCanvasRef.current;
 
     if (!video || !overlayCanvas) return;
 
-    // Set overlay canvas size
     overlayCanvas.width = video.videoWidth || 640;
     overlayCanvas.height = video.videoHeight || 480;
 
-    // Load MediaPipe scripts
+    // Load MediaPipe scripts sequentially
     const loadScripts = () => {
       return new Promise<void>((resolve) => {
         const handsScript = document.createElement("script");
@@ -207,17 +209,7 @@ export default function ClientPage() {
 
         await loadScripts();
 
-        // Wait for scripts to be available
-        await new Promise<void>((resolve) => {
-          const check = () => {
-            if (window.Hands && window.Camera) {
-              resolve();
-            } else {
-              setTimeout(check, 50);
-            }
-          };
-          check();
-        });
+        if (!mountedRef.current) return;
 
         setStatus("Monitoring");
 
@@ -236,7 +228,7 @@ export default function ClientPage() {
         });
 
         hands.onResults((results: any) => {
-          if (!overlayCanvasRef.current) return;
+          if (!mountedRef.current || !overlayCanvasRef.current) return;
 
           overlayCanvasRef.current.width = video.videoWidth || 640;
           overlayCanvasRef.current.height = video.videoHeight || 480;
@@ -254,10 +246,8 @@ export default function ClientPage() {
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             const landmarks = results.multiHandLandmarks[0];
 
-            // Draw landmarks
             drawLandmarks(landmarks);
 
-            // Check detection conditions
             const nearFace = isHandNearFace(landmarks);
             const pinch = isPinchGesture(landmarks);
 
@@ -271,8 +261,9 @@ export default function ClientPage() {
               if (elapsed >= TRIGGER_TIME && !triggeredRef.current) {
                 triggeredRef.current = true;
                 setStatus("Alert triggered");
-                captureAndSave();
-                resetTriggered();
+                captureAndSave().then(() => {
+                  if (mountedRef.current) resetTriggered();
+                });
               }
             } else {
               triggerStartRef.current = null;
@@ -290,10 +281,11 @@ export default function ClientPage() {
 
         handsInstanceRef.current = hands;
 
-        // Initialize Camera
         const camera = new window.Camera(video, {
           onFrame: async () => {
-            await hands.send({ image: video });
+            if (mountedRef.current) {
+              await hands.send({ image: video });
+            }
           },
           width: 640,
           height: 480,
@@ -302,17 +294,20 @@ export default function ClientPage() {
         cameraInstanceRef.current = camera;
         await camera.start();
       } catch (err: any) {
-        setError(
-          err.name === "NotAllowedError"
-            ? "Camera access denied. Please allow camera permissions."
-            : `Camera error: ${err.message}`
-        );
+        if (mountedRef.current) {
+          setError(
+            err.name === "NotAllowedError"
+              ? "Camera access denied. Please allow camera permissions."
+              : `Camera error: ${err.message}`
+          );
+        }
       }
     };
 
     initCamera();
 
     return () => {
+      mountedRef.current = false;
       if (cameraInstanceRef.current) {
         cameraInstanceRef.current.stop();
       }
