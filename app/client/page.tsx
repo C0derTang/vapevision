@@ -206,10 +206,12 @@ export default function ClientPage() {
           video: { facingMode: "user" },
         });
         video.srcObject = stream;
-        await video.play();
 
         await loadScripts();
 
+        if (!mountedRef.current) return;
+
+        await video.play();
         if (!mountedRef.current) return;
 
         setStatus("Monitoring");
