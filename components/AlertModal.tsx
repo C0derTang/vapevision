@@ -3,6 +3,8 @@ interface AlertModalProps {
   timestamp: string;
   cameraId: string;
   onClose: () => void;
+  onConfirmVaping: () => void;
+  onFalsePositive: () => void;
 }
 
 export default function AlertModal({
@@ -10,6 +12,8 @@ export default function AlertModal({
   timestamp,
   cameraId,
   onClose,
+  onConfirmVaping,
+  onFalsePositive,
 }: AlertModalProps) {
   return (
     <div
@@ -41,6 +45,22 @@ export default function AlertModal({
             alt="Alert capture"
             className="w-full h-auto border border-gray-800"
           />
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-4 px-6 pb-6">
+          <button
+            onClick={onFalsePositive}
+            className="flex-1 px-6 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-mono text-sm tracking-widest uppercase border border-gray-700 transition-all"
+          >
+            False Positive
+          </button>
+          <button
+            onClick={onConfirmVaping}
+            className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-black font-mono text-sm tracking-widest uppercase font-bold transition-all"
+          >
+            Confirm Vaping
+          </button>
         </div>
       </div>
     </div>
