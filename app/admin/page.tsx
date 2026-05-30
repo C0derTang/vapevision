@@ -15,7 +15,17 @@ interface Alert {
   processed: boolean;
 }
 
+interface VapingCase {
+  id: string;
+  timestamp: Timestamp;
+  cameraId: string;
+  imageData: string;
+  confirmedAt: Timestamp;
+  originalAlertId: string;
+}
+
 type SortOrder = "desc" | "asc";
+type TabType = "alerts" | "vaping_cases";
 
 function formatTimestamp(ts: Timestamp | null): string {
   if (!ts) return "—";
@@ -27,6 +37,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [vapingCases, setVapingCases] = useState<VapingCase[]>([]);
+  const [activeTab, setActiveTab] = useState<TabType>("alerts");
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -60,6 +72,21 @@ export default function AdminPage() {
 
     return () => unsubscribe();
   }, [user, sortOrder]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(collection(db, "vaping_cases"), orderBy("confirmedAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const caseData: VapingCase[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as VapingCase[];
+      setVapingCases(caseData);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const handleSignIn = async () => {
     try {
@@ -175,10 +202,6 @@ export default function AdminPage() {
       <header className="px-6 py-5 border-b border-gray-900 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-6">
           <h1 className="font-mono text-sm font-semibold tracking-widest text-white uppercase">VapeVision</h1>
-          <div className="w-px h-4 bg-gray-800" />
-          <span className="font-mono text-xs text-gray-300 tracking-widest uppercase">
-            {filteredAlerts.length} Alert{filteredAlerts.length !== 1 ? 's' : ''}
-          </span>
         </div>
         <div className="flex items-center gap-4">
           <span className="font-mono text-xs text-gray-400">{user.email}</span>
@@ -191,79 +214,138 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* Controls */}
+      {/* Tabs */}
       <div className="px-6 py-4 border-b border-gray-900 flex items-center gap-6 relative z-10">
-        <div className="flex items-center gap-3">
-          <label className="font-mono text-xs text-gray-400 tracking-widest uppercase">Sort:</label>
-          <select
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-            className="bg-gray-900/50 border border-gray-800 text-gray-300 font-mono text-xs px-3 py-2 rounded focus:border-blue-600 outline-none cursor-pointer"
-          >
-            <option value="desc">Newest First</option>
-            <option value="asc">Oldest First</option>
-          </select>
-        </div>
-        {cameraIds.length > 1 && (
-          <div className="flex items-center gap-3">
-            <label className="font-mono text-xs text-gray-400 tracking-widest uppercase">Camera:</label>
-            <select
-              value={filterCamera}
-              onChange={(e) => setFilterCamera(e.target.value)}
-              className="bg-gray-900/50 border border-gray-800 text-gray-300 font-mono text-xs px-3 py-2 rounded focus:border-blue-600 outline-none cursor-pointer"
-            >
-              <option value="">All Cameras</option>
-              {cameraIds.map(id => (
-                <option key={id} value={id}>{id}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        <button
+          onClick={() => setActiveTab("alerts")}
+          className={`font-mono text-xs tracking-widest uppercase transition-colors pb-1 border-b-2 ${
+            activeTab === "alerts"
+              ? 'text-blue-600 border-blue-600'
+              : 'text-gray-400 border-transparent hover:text-gray-300'
+          }`}
+        >
+          Alerts ({alerts.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("vaping_cases")}
+          className={`font-mono text-xs tracking-widest uppercase transition-colors pb-1 border-b-2 ${
+            activeTab === "vaping_cases"
+              ? 'text-blue-600 border-blue-600'
+              : 'text-gray-400 border-transparent hover:text-gray-300'
+          }`}
+        >
+          Confirmed ({vapingCases.length})
+        </button>
       </div>
 
-      {/* Alert Grid */}
-      <main className="p-6 relative z-10">
-        {filteredAlerts.length === 0 ? (
-          <div className="text-center font-mono text-sm text-gray-400 tracking-widest uppercase py-24">No Alerts</div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {filteredAlerts.map((alert, index) => (
-              <div
-                key={alert.id}
-                onClick={() => setSelectedAlert(alert)}
-                className={`relative aspect-square bg-gray-900/50 border border-gray-800 rounded-lg overflow-hidden cursor-pointer transition-all duration-300 group
-                  ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
-                `}
-                style={{
-                  transitionDelay: loaded ? `${index * 30}ms` : '0ms'
-                }}
+      {/* Controls - only show for Alerts tab */}
+      {activeTab === "alerts" && (
+        <div className="px-6 py-4 border-b border-gray-900 flex items-center gap-6 relative z-10">
+          <div className="flex items-center gap-3">
+            <label className="font-mono text-xs text-gray-400 tracking-widest uppercase">Sort:</label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+              className="bg-gray-900/50 border border-gray-800 text-gray-300 font-mono text-xs px-3 py-2 rounded focus:border-blue-600 outline-none cursor-pointer"
+            >
+              <option value="desc">Newest First</option>
+              <option value="asc">Oldest First</option>
+            </select>
+          </div>
+          {cameraIds.length > 1 && (
+            <div className="flex items-center gap-3">
+              <label className="font-mono text-xs text-gray-400 tracking-widest uppercase">Camera:</label>
+              <select
+                value={filterCamera}
+                onChange={(e) => setFilterCamera(e.target.value)}
+                className="bg-gray-900/50 border border-gray-800 text-gray-300 font-mono text-xs px-3 py-2 rounded focus:border-blue-600 outline-none cursor-pointer"
               >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <img
-                  src={alert.imageData}
-                  alt={`Alert from ${alert.cameraId}`}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 border-2 border-transparent group-hover:border-blue-600/50 transition-colors duration-300 rounded-lg" />
-                <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="px-2 py-1 bg-black/80 font-mono text-xs text-gray-300 tracking-widest uppercase rounded backdrop-blur-sm">
-                    {alert.cameraId.split('_')[1]?.slice(0, 6) || alert.cameraId.slice(-6)}
+                <option value="">All Cameras</option>
+                {cameraIds.map(id => (
+                  <option key={id} value={id}>{id}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Content */}
+      <main className="p-6 relative z-10">
+        {activeTab === "alerts" ? (
+          filteredAlerts.length === 0 ? (
+            <div className="text-center font-mono text-sm text-gray-400 tracking-widest uppercase py-24">No Alerts</div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {filteredAlerts.map((alert, index) => (
+                <div
+                  key={alert.id}
+                  onClick={() => setSelectedAlert(alert)}
+                  className={`relative aspect-square bg-gray-900/50 border border-gray-800 rounded-lg overflow-hidden cursor-pointer transition-all duration-300 group
+                    ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
+                  `}
+                  style={{
+                    transitionDelay: loaded ? `${index * 30}ms` : '0ms'
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <img
+                    src={alert.imageData}
+                    alt={`Alert from ${alert.cameraId}`}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-blue-600/50 transition-colors duration-300 rounded-lg" />
+                  <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="px-2 py-1 bg-black/80 font-mono text-xs text-gray-300 tracking-widest uppercase rounded backdrop-blur-sm">
+                      {alert.cameraId.split('_')[1]?.slice(0, 6) || alert.cameraId.slice(-6)}
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteConfirmId(alert.id);
+                    }}
+                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-2 bg-black/80 text-gray-400 hover:text-red-400 transition-all rounded backdrop-blur-sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-.382l-.724 1.447A1 1 0 009 2zM8 6a1 1 0 011-1h6a1 1 0 011 1v7.586l.707-.707A1 1 0 0116 14H8V6z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          vapingCases.length === 0 ? (
+            <div className="text-center font-mono text-sm text-gray-400 tracking-widest uppercase py-24">No Confirmed Cases</div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {vapingCases.map((caseItem, index) => (
+                <div
+                  key={caseItem.id}
+                  className={`relative aspect-square bg-gray-900/50 border border-blue-600/30 rounded-lg overflow-hidden transition-all duration-300 group
+                    ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
+                  `}
+                  style={{
+                    transitionDelay: loaded ? `${index * 30}ms` : '0ms'
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <img
+                    src={caseItem.imageData}
+                    alt={`Case from ${caseItem.cameraId}`}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 border border-blue-600/50 transition-colors duration-300 rounded-lg" />
+                  <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="px-2 py-1 bg-blue-600/80 font-mono text-xs text-white tracking-widest uppercase rounded backdrop-blur-sm">
+                      {caseItem.cameraId.split('_')[1]?.slice(0, 6) || caseItem.cameraId.slice(-6)}
+                    </div>
                   </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteConfirmId(alert.id);
-                  }}
-                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-2 bg-black/80 text-gray-400 hover:text-red-400 transition-all rounded backdrop-blur-sm"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-.382l-.724 1.447A1 1 0 009 2zM8 6a1 1 0 011-1h6a1 1 0 011 1v7.586l.707-.707A1 1 0 0116 14H8V6z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
         )}
       </main>
 
