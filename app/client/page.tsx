@@ -31,6 +31,8 @@ export default function ClientPage() {
   const [error, setError] = useState<string>("");
   const [toast, setToast] = useState<string>("");
   const [isFlashing, setIsFlashing] = useState(false);
+  const [nearFaceActive, setNearFaceActive] = useState(false);
+  const [pinchActive, setPinchActive] = useState(false);
 
   const triggeredRef = useRef(false);
   const triggerStartRef = useRef<number | null>(null);
@@ -254,6 +256,9 @@ export default function ClientPage() {
             const nearFace = isHandNearFace(landmarks);
             const pinch = isPinchGesture(landmarks);
 
+            setNearFaceActive(nearFace);
+            setPinchActive(pinch);
+
             if (nearFace && pinch) {
               setIsFlashing(true);
               if (!triggerStartRef.current) {
@@ -271,6 +276,8 @@ export default function ClientPage() {
                 });
               }
             } else {
+              setNearFaceActive(false);
+              setPinchActive(false);
               setIsFlashing(false);
               triggerStartRef.current = null;
               if (!triggeredRef.current) {
@@ -278,6 +285,8 @@ export default function ClientPage() {
               }
             }
           } else {
+            setNearFaceActive(false);
+            setPinchActive(false);
             setIsFlashing(false);
             triggerStartRef.current = null;
             if (!triggeredRef.current) {
@@ -402,14 +411,16 @@ export default function ClientPage() {
             )}
 
             {/* Detection info */}
-            <div className={`mt-6 text-center text-sm space-y-2 transition-colors duration-300 ${isFlashing ? "text-green-400" : "text-gray-500"}`}>
-              <p className={isFlashing ? "animate-pulse" : ""}>
+            <div className="mt-6 text-center text-sm space-y-2">
+              <p className={nearFaceActive ? "text-green-400 animate-pulse" : "text-gray-500"}>
                 Hand near face (wrist-to-face distance &lt; {FACE_DIST_THRESHOLD})
               </p>
-              <p className={isFlashing ? "animate-pulse" : ""}>
+              <p className={pinchActive ? "text-green-400 animate-pulse" : "text-gray-500"}>
                 Pinch gesture (thumb-index distance &lt; {PINCH_DIST_THRESHOLD})
               </p>
-              <p className={isFlashing ? "animate-pulse" : ""}>Sustained for {TRIGGER_TIME}ms triggers capture</p>
+              <p className={isFlashing ? "text-green-400 animate-pulse" : "text-gray-500"}>
+                Sustained for {TRIGGER_TIME}ms triggers capture
+              </p>
             </div>
           </div>
         )}
