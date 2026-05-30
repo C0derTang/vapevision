@@ -30,6 +30,7 @@ export default function ClientPage() {
   const [cameraId, setCameraId] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [toast, setToast] = useState<string>("");
+  const [isFlashing, setIsFlashing] = useState(false);
 
   const triggeredRef = useRef(false);
   const triggerStartRef = useRef<number | null>(null);
@@ -252,6 +253,7 @@ export default function ClientPage() {
             const pinch = isPinchGesture(landmarks);
 
             if (nearFace && pinch) {
+              setIsFlashing(true);
               if (!triggerStartRef.current) {
                 triggerStartRef.current = Date.now();
               }
@@ -261,11 +263,13 @@ export default function ClientPage() {
               if (elapsed >= TRIGGER_TIME && !triggeredRef.current) {
                 triggeredRef.current = true;
                 setStatus("Alert triggered");
+                setIsFlashing(false);
                 captureAndSave().then(() => {
                   if (mountedRef.current) resetTriggered();
                 });
               }
             } else {
+              setIsFlashing(false);
               triggerStartRef.current = null;
               if (!triggeredRef.current) {
                 setStatus("Monitoring");
@@ -395,14 +399,14 @@ export default function ClientPage() {
             )}
 
             {/* Detection info */}
-            <div className="mt-6 text-center text-gray-500 text-sm space-y-2">
-              <p>
+            <div className={`mt-6 text-center text-sm space-y-2 transition-colors duration-300 ${isFlashing ? "text-green-400" : "text-gray-500"}`}>
+              <p className={isFlashing ? "animate-pulse" : ""}>
                 Hand near face (wrist-to-face distance &lt; {FACE_DIST_THRESHOLD})
               </p>
-              <p>
+              <p className={isFlashing ? "animate-pulse" : ""}>
                 Pinch gesture (thumb-index distance &lt; {PINCH_DIST_THRESHOLD})
               </p>
-              <p>Sustained for {TRIGGER_TIME}ms triggers capture</p>
+              <p className={isFlashing ? "animate-pulse" : ""}>Sustained for {TRIGGER_TIME}ms triggers capture</p>
             </div>
           </div>
         )}
