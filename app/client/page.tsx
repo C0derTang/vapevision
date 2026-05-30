@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 // Detection thresholds
-const FACE_DIST_THRESHOLD = 0.3;
+const FACE_DIST_THRESHOLD = 1;
 const PINCH_DIST_THRESHOLD = 0.05;
 const TRIGGER_TIME = 1500;
 const FACE_CENTER = { x: 0.5, y: 0.1 };
@@ -34,6 +34,7 @@ export default function ClientPage() {
   const [isFlashing, setIsFlashing] = useState(false);
   const [nearFaceActive, setNearFaceActive] = useState(false);
   const [pinchActive, setPinchActive] = useState(false);
+  const prevNearFaceRef = useRef(false);
 
   const triggeredRef = useRef(false);
   const triggerStartRef = useRef<number | null>(null);
@@ -295,8 +296,21 @@ export default function ClientPage() {
             const nearFace = isHandNearFace(landmarks);
             const pinch = isPinchGesture(landmarks);
 
+            const prevNearFace = prevNearFaceRef.current;
+            prevNearFaceRef.current = nearFace;
+
             setNearFaceActive(nearFace);
             setPinchActive(pinch);
+
+            // Reset everything when nearFace ends
+            if (prevNearFace && !nearFace) {
+              triggerStartRef.current = null;
+              triggeredRef.current = false;
+              setIsFlashing(false);
+              if (status === "Alert triggered") {
+                setStatus("Monitoring");
+              }
+            }
 
             if (nearFace && pinch) {
               setIsFlashing(true);
@@ -314,20 +328,16 @@ export default function ClientPage() {
                   if (mountedRef.current) resetTriggered();
                 });
               }
-            } else {
-              setNearFaceActive(false);
+            } else if (!pinch) {
               setPinchActive(false);
-              setIsFlashing(false);
-              triggerStartRef.current = null;
-              if (!triggeredRef.current) {
-                setStatus("Monitoring");
-              }
             }
           } else {
             setNearFaceActive(false);
             setPinchActive(false);
             setIsFlashing(false);
             triggerStartRef.current = null;
+            triggeredRef.current = false;
+            prevNearFaceRef.current = false;
             if (!triggeredRef.current) {
               setStatus("Monitoring");
             }
