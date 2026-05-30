@@ -298,11 +298,9 @@ export default function ClientPage() {
 
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             for (const handLandmarks of results.multiHandLandmarks) {
-              drawLandmarks(handLandmarks, "#22c55e", 8, nearFace);
-
               // Compute hand size for adaptive threshold scaling
               const wrist = handLandmarks[0];
-              const middleMcp = handLandmarks[9]; // landmark 9 = middle finger MCP
+              const middleMcp = handLandmarks[9];
               const handSize = distance(wrist, middleMcp);
               const scale = handSize / REFERENCE_HAND_SIZE;
 
@@ -311,6 +309,8 @@ export default function ClientPage() {
 
               const nearFace = isHandNearFace(handLandmarks, effectiveFaceDist);
               const pinch = isPinchGesture(handLandmarks, effectivePinchDist);
+
+              drawLandmarks(handLandmarks, "#22c55e", 8, nearFace);
 
               if (nearFace) anyNearFace = true;
               if (pinch) anyPinch = true;
