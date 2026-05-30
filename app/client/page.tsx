@@ -7,7 +7,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 // Detection thresholds
 const REFERENCE_HAND_SIZE = 0.15; // normalized units, ~arm's length
-const FACE_DIST_THRESHOLD = 0.5;
+const FACE_DIST_THRESHOLD = 0.3;
 const PINCH_DIST_THRESHOLD = 0.1;
 const TRIGGER_TIME = 1500;
 const FACE_CENTER = { x: 0.5, y: 0.1 };

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { User } from "firebase/auth";
 import { auth, googleProvider, db } from "@/lib/firebase";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
-import { collection, onSnapshot, query, orderBy, Timestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, Timestamp, deleteDoc, doc } from "firebase/firestore";
 import AlertModal from "@/components/AlertModal";
 
 interface Alert {
@@ -26,6 +26,8 @@ export default function AdminPage() {
   const [user, setUser] = useState<User | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -63,6 +65,19 @@ export default function AdminPage() {
       await signOut(auth);
     } catch (err) {
       console.error("Sign out error:", err);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirmId) return;
+    setDeleting(true);
+    try {
+      await deleteDoc(doc(db, "alerts", deleteConfirmId));
+      setDeleteConfirmId(null);
+    } catch (err) {
+      console.error("Delete error:", err);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -146,7 +161,7 @@ export default function AdminPage() {
               <div
                 key={alert.id}
                 onClick={() => setSelectedAlert(alert)}
-                className="flex items-center gap-4 p-4 bg-gray-900 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors"
+                className="flex items-center gap-4 p-4 bg-gray-900 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors group"
               >
                 <img
                   src={alert.imageData}
@@ -168,11 +183,49 @@ export default function AdminPage() {
                     {formatTimestamp(alert.timestamp)}
                   </div>
                 </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteConfirmId(alert.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-400 transition-all"
+                  title="Delete alert"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-.382l-.724 1.447A1 1 0 009 2zM8 6a1 1 0 011-1h6a1 1 0 011 1v7.586l.707-.707A1 1 0 0116 14H8V6z" clipRule="evenodd" />
+                  </svg>
+                </button>
               </div>
             ))}
           </div>
         )}
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-900 rounded-xl p-6 max-w-sm w-full mx-4 border border-gray-700">
+            <h3 className="text-lg font-semibold mb-2">Delete Alert</h3>
+            <p className="text-gray-400 text-sm mb-6">This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {selectedAlert && (
