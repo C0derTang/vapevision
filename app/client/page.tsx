@@ -278,6 +278,7 @@ export default function ClientPage() {
               }
             }
           } else {
+            setIsFlashing(false);
             triggerStartRef.current = null;
             if (!triggeredRef.current) {
               setStatus("Monitoring");
