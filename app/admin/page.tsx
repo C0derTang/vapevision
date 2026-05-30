@@ -1,28 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { auth, googleProvider } from "@/lib/firebase";
-import { db } from "@/lib/firebase";
+import { User } from "firebase/auth";
+import { auth, googleProvider, db } from "@/lib/firebase";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, Timestamp } from "firebase/firestore";
 import AlertModal from "@/components/AlertModal";
 
 interface Alert {
   id: string;
-  timestamp: any;
+  timestamp: Timestamp;
   cameraId: string;
   imageData: string;
   processed: boolean;
 }
 
-function formatTimestamp(ts: any): string {
-  const date = ts?.toDate ? ts.toDate() : new Date(ts);
+function formatTimestamp(ts: Timestamp | null): string {
+  if (!ts) return "—";
+  const date = ts.toDate();
   return date.toLocaleString();
 }
 
 export default function AdminPage() {
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 
@@ -150,7 +151,7 @@ export default function AdminPage() {
                 <img
                   src={alert.imageData}
                   alt={`Alert from ${alert.cameraId}`}
-                  className="w-24 h-18 object-cover rounded"
+                  className="w-24 h-24 object-cover rounded"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
