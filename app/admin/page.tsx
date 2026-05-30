@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { User } from "firebase/auth";
 import { auth, googleProvider, db } from "@/lib/firebase";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
-import { collection, onSnapshot, query, orderBy, Timestamp, deleteDoc, doc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, Timestamp, deleteDoc, doc, addDoc, serverTimestamp } from "firebase/firestore";
 import AlertModal from "@/components/AlertModal";
 
 interface Alert {
@@ -79,6 +79,20 @@ export default function AdminPage() {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleVerify = async (alert: Alert, confirmed: boolean) => {
+    if (confirmed) {
+      await addDoc(collection(db, "vaping_cases"), {
+        timestamp: alert.timestamp,
+        cameraId: alert.cameraId,
+        imageData: alert.imageData,
+        confirmedAt: serverTimestamp(),
+        originalAlertId: alert.id,
+      });
+    }
+    await deleteDoc(doc(db, "alerts", alert.id));
+    setSelectedAlert(null);
   };
 
   if (loading) {
@@ -160,47 +174,36 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* Alert List */}
+      {/* Alert Grid */}
       <main className="p-6 relative z-10">
         {alerts.length === 0 ? (
           <div className="text-center font-mono text-sm text-gray-400 tracking-widest uppercase py-24">No Alerts</div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {alerts.map((alert) => (
               <div
                 key={alert.id}
                 onClick={() => setSelectedAlert(alert)}
-                className="flex items-center gap-4 p-4 bg-gray-900/50 border border-gray-800 rounded-lg cursor-pointer hover:border-gray-700 transition-all group"
+                className="relative aspect-square bg-gray-900/50 border border-gray-800 rounded-lg overflow-hidden cursor-pointer hover:border-gray-600 transition-all group"
               >
                 <img
                   src={alert.imageData}
                   alt={`Alert from ${alert.cameraId}`}
-                  className="w-24 h-24 object-cover rounded"
+                  className="w-full h-full object-cover"
                 />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-sm text-gray-400">
-                      {alert.cameraId}
-                    </span>
-                    {alert.processed && (
-                      <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded">
-                        Processed
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-sm text-gray-300 mt-1">
-                    {formatTimestamp(alert.timestamp)}
-                  </div>
+                {/* Camera ID badge */}
+                <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/70 font-mono text-xs text-gray-300 tracking-widest uppercase rounded">
+                  {alert.cameraId.split('_')[1]?.slice(0, 6) || alert.cameraId.slice(-6)}
                 </div>
+                {/* Delete button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setDeleteConfirmId(alert.id);
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-400 transition-all"
-                  title="Delete alert"
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-2 bg-black/70 text-gray-400 hover:text-red-400 transition-all rounded"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                     <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-.382l-.724 1.447A1 1 0 009 2zM8 6a1 1 0 011-1h6a1 1 0 011 1v7.586l.707-.707A1 1 0 0116 14H8V6z" clipRule="evenodd" />
                   </svg>
                 </button>
@@ -243,6 +246,8 @@ export default function AdminPage() {
           timestamp={formatTimestamp(selectedAlert.timestamp)}
           cameraId={selectedAlert.cameraId}
           onClose={() => setSelectedAlert(null)}
+          onConfirmVaping={() => handleVerify(selectedAlert, true)}
+          onFalsePositive={() => handleVerify(selectedAlert, false)}
         />
       )}
     </div>
