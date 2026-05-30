@@ -21,7 +21,7 @@ export default function AlertModal({
       onClick={onClose}
     >
       <div
-        className="relative bg-[#0a0a0a] border border-gray-800 max-w-4xl w-full mx-4 max-h-[90vh]overflow-hidden"
+        className="relative bg-[#0a0a0a] border border-gray-800 max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
