@@ -75,8 +75,12 @@ export default function ClientPage() {
     if (faceLandmarksRef.current.length === 0) return false;
     const nose = faceLandmarksRef.current[1]; // landmark 1 = nose tip in FaceMesh
     const wrist = handLandmarks[0];
+    const thumbTip = handLandmarks[4];
+    const indexTip = handLandmarks[8];
+
     const wristDist = distance(wrist, nose);
-    return wristDist < threshold;
+    const belowNose = thumbTip.y > nose.y && indexTip.y > nose.y;
+    return wristDist < threshold && belowNose;
   };
 
   // Check if pinch gesture
