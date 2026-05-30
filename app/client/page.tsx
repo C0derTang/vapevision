@@ -7,7 +7,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 // Detection thresholds
 const REFERENCE_HAND_SIZE = 0.15; // normalized units, ~arm's length
-const FACE_DIST_THRESHOLD = 0.1;
+const FACE_DIST_THRESHOLD = 0.5;
 const PINCH_DIST_THRESHOLD = 0.1;
 const TRIGGER_TIME = 1500;
 const FACE_CENTER = { x: 0.5, y: 0.1 };
@@ -75,8 +75,12 @@ export default function ClientPage() {
     if (faceLandmarksRef.current.length === 0) return false;
     const nose = faceLandmarksRef.current[1]; // landmark 1 = nose tip in FaceMesh
     const wrist = handLandmarks[0];
+    const thumbTip = handLandmarks[4];
+    const indexTip = handLandmarks[8];
     const wristDist = distance(wrist, nose);
-    return wristDist < threshold;
+    const thumbBelowNose = thumbTip.y > nose.y;
+    const indexBelowNose = indexTip.y > nose.y;
+    return wristDist < threshold && thumbBelowNose && indexBelowNose;
   };
 
   // Check if pinch gesture
@@ -125,13 +129,14 @@ export default function ClientPage() {
   };
 
   // Draw landmarks on overlay canvas
-  const drawLandmarks = (landmarks: any[], color: string, radius: number) => {
+  const drawLandmarks = (landmarks: any[], color: string, radius: number, showPinch: boolean = false) => {
     const overlayCanvas = overlayCanvasRef.current;
     if (!overlayCanvas) return;
 
     const ctx = overlayCanvas.getContext("2d");
     if (!ctx) return;
 
+    // Draw wrist
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(
@@ -142,6 +147,29 @@ export default function ClientPage() {
       2 * Math.PI
     );
     ctx.fill();
+
+    // Draw thumb and index tips if showing pinch
+    if (showPinch) {
+      ctx.fillStyle = "#3b82f6";
+      ctx.beginPath();
+      ctx.arc(
+        landmarks[4].x * overlayCanvas.width,
+        landmarks[4].y * overlayCanvas.height,
+        5,
+        0,
+        2 * Math.PI
+      );
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(
+        landmarks[8].x * overlayCanvas.width,
+        landmarks[8].y * overlayCanvas.height,
+        5,
+        0,
+        2 * Math.PI
+      );
+      ctx.fill();
+    }
   };
 
   const drawNose = () => {
@@ -270,7 +298,7 @@ export default function ClientPage() {
 
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             for (const handLandmarks of results.multiHandLandmarks) {
-              drawLandmarks(handLandmarks, "#22c55e", 8);
+              drawLandmarks(handLandmarks, "#22c55e", 8, nearFace);
 
               // Compute hand size for adaptive threshold scaling
               const wrist = handLandmarks[0];
