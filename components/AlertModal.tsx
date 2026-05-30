@@ -23,7 +23,7 @@ export default function AlertModal({
       onClick={onClose}
     >
       <div
-        className="relative bg-[#0a0a0a] border border-gray-800 max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden"
+        className="relative bg-[#0a0a0a] border border-gray-800 max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -41,11 +41,11 @@ export default function AlertModal({
         </div>
 
         {/* Image */}
-        <div className="p-6 overflow-auto max-h-[calc(90vh-80px)]">
+        <div className="p-4 overflow-auto max-h-[calc(90vh-140px)]">
           <img
             src={imageData}
             alt="Alert capture"
-            className="w-full h-auto border border-gray-800"
+            className="max-w-full h-auto mx-auto border border-gray-800 rounded"
           />
         </div>
 
