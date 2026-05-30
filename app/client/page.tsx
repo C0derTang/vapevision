@@ -420,7 +420,7 @@ export default function ClientPage() {
     <div className="min-h-screen bg-[#080808] text-gray-100 flex flex-col relative overflow-hidden">
       {/* Grid background */}
       <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: `linear-gradient(#2dd4bf 1px, transparent 1px), linear-gradient(90deg, #2dd4bf 1px, transparent 1px)`,
+        backgroundImage: `linear-gradient(#0c2682 1px, transparent 1px), linear-gradient(90deg, #0c2682 1px, transparent 1px)`,
         backgroundSize: '60px 60px'
       }} />
 
@@ -428,7 +428,7 @@ export default function ClientPage() {
       <header className="px-6 py-4 border-b border-gray-900 flex items-center justify-between relative z-10">
         <Link
           href="/"
-          className="font-mono text-xs tracking-widest text-gray-500 hover:text-teal-400 uppercase transition-colors"
+          className="font-mono text-xs tracking-widest text-gray-500 hover:text-blue-600 uppercase transition-colors"
         >
           ← Back to Home
         </Link>
@@ -479,7 +479,7 @@ export default function ClientPage() {
 
             {/* Toast notification */}
             {toast && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-teal-400 text-black font-mono text-sm px-6 py-3 tracking-widest uppercase animate-pulse">
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-blue-600 text-black font-mono text-sm px-6 py-3 tracking-widest uppercase animate-pulse">
                 Alert Captured
               </div>
             )}
@@ -487,19 +487,19 @@ export default function ClientPage() {
             {/* Detection info */}
             <div className="mt-8 grid grid-cols-3 gap-6 text-center font-mono text-xs">
               <div className="space-y-2">
-                <div className={`text-lg font-bold ${nearFaceActive ? 'text-teal-400' : 'text-gray-600'}`}>
+                <div className={`text-lg font-bold ${nearFaceActive ? 'text-blue-600' : 'text-gray-600'}`}>
                   {nearFaceActive ? 'ACTIVE' : '—'}
                 </div>
                 <div className="text-gray-600 tracking-widest uppercase">Near Face</div>
               </div>
               <div className="space-y-2">
-                <div className={`text-lg font-bold ${pinchActive ? 'text-teal-400' : 'text-gray-600'}`}>
+                <div className={`text-lg font-bold ${pinchActive ? 'text-blue-600' : 'text-gray-600'}`}>
                   {pinchActive ? 'PINCH' : '—'}
                 </div>
                 <div className="text-gray-600 tracking-widest uppercase">Gesture</div>
               </div>
               <div className="space-y-2">
-                <div className={`text-lg font-bold ${isFlashing ? 'text-teal-400 animate-pulse' : 'text-gray-600'}`}>
+                <div className={`text-lg font-bold ${isFlashing ? 'text-blue-600 animate-pulse' : 'text-gray-600'}`}>
                   {TRIGGER_TIME}ms
                 </div>
                 <div className="text-gray-600 tracking-widest uppercase">Trigger</div>

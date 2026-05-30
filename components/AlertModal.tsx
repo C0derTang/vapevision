@@ -23,12 +23,12 @@ export default function AlertModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-900">
           <div className="flex items-center gap-6">
-            <span className="font-mono text-xs text-teal-400 tracking-widest uppercase">{cameraId}</span>
+            <span className="font-mono text-xs text-blue-600 tracking-widest uppercase">{cameraId}</span>
             <span className="font-mono text-xs text-gray-600">{timestamp}</span>
           </div>
           <button
             onClick={onClose}
-            className="font-mono text-xs text-gray-500 hover:text-teal-400 uppercase tracking-widest transition-colors p-2"
+            className="font-mono text-xs text-gray-500 hover:text-blue-600 uppercase tracking-widest transition-colors p-2"
           >
             Close
           </button>

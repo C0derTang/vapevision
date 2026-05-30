@@ -8,7 +8,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#080808] text-gray-100 flex flex-col relative overflow-hidden">
       {/* Grid background */}
       <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: `linear-gradient(#2dd4bf 1px, transparent 1px), linear-gradient(90deg, #2dd4bf 1px, transparent 1px)`,
+        backgroundImage: `linear-gradient(#0c2682 1px, transparent 1px), linear-gradient(90deg, #0c2682 1px, transparent 1px)`,
         backgroundSize: '60px 60px'
       }} />
 
@@ -19,7 +19,7 @@ export default function Home() {
 
       {/* Scan line */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute w-full h-[1px] bg-teal-400/10 animate-[scan_8s_linear_infinite]" style={{ top: '0%', animation: 'scan 8s linear infinite' }} />
+        <div className="absolute w-full h-[1px] bg-blue-600/10 animate-[scan_8s_linear_infinite]" style={{ top: '0%', animation: 'scan 8s linear infinite' }} />
       </div>
 
       <Header />
@@ -29,27 +29,27 @@ export default function Home() {
         <div className="max-w-3xl text-center space-y-12">
           {/* Status indicator */}
           <div className="flex items-center justify-center gap-3" style={{ animation: 'fadeIn 0.6s ease-out 0.1s both' }}>
-            <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
-            <span className="text-xs font-mono text-teal-400/60 tracking-widest uppercase">System Active</span>
+            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+            <span className="text-xs font-mono text-blue-600/60 tracking-widest uppercase">System Active</span>
           </div>
 
           {/* Logo/Title */}
           <div className="space-y-6" style={{ animation: 'fadeIn 0.8s ease-out 0.2s both' }}>
             <h1 className="text-7xl md:text-9xl font-bold tracking-tighter text-white relative">
               VapeVision
-              <span className="absolute -inset-4 bg-gradient-to-r from-transparent via-teal-400/10 to-transparent blur-3xl" />
+              <span className="absolute -inset-4 bg-gradient-to-r from-transparent via-blue-600/10 to-transparent blur-3xl" />
             </h1>
-            <div className="w-24 h-[1px] bg-gradient-to-r from-transparent via-teal-400 to-transparent mx-auto" />
+            <div className="w-24 h-[1px] bg-gradient-to-r from-transparent via-blue-600 to-transparent mx-auto" />
           </div>
 
           {/* Tagline */}
-          <p className="text-2xl md:text-3xl font-mono text-teal-400 tracking-tight" style={{ animation: 'fadeIn 0.8s ease-out 0.4s both' }}>
+          <p className="text-2xl md:text-3xl font-mono text-blue-600 tracking-tight" style={{ animation: 'fadeIn 0.8s ease-out 0.4s both' }}>
             AI-powered vape detection
           </p>
 
           {/* Description */}
           <p className="text-gray-500 text-base leading-relaxed max-w-lg mx-auto font-mono text-sm" style={{ animation: 'fadeIn 0.8s ease-out 0.6s both' }}>
-            <span className="text-teal-400/40">&gt;</span> Real-time hand tracking and gesture recognition via MediaPipe.
+            <span className="text-blue-600/40">&gt;</span> Real-time hand tracking and gesture recognition via MediaPipe.
             <br />
             Detects proximity to face and object manipulation patterns.
             <br />
@@ -60,7 +60,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-6 justify-center pt-8" style={{ animation: 'fadeIn 0.8s ease-out 0.8s both' }}>
             <Link
               href="/client"
-              className="group relative px-10 py-5 bg-teal-400 text-black font-mono font-bold text-sm tracking-widest uppercase overflow-hidden transition-all duration-300 hover:scale-105"
+              className="group relative px-10 py-5 bg-blue-600 text-black font-mono font-bold text-sm tracking-widest uppercase overflow-hidden transition-all duration-300 hover:scale-105"
             >
               <span className="relative z-10 flex items-center gap-3">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,7 +73,7 @@ export default function Home() {
                 </svg>
                 Start Monitoring
               </span>
-              <div className="absolute inset-0 bg-teal-300 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+              <div className="absolute inset-0 bg-blue-700 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
             </Link>
 
             <Link

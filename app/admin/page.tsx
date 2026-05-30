@@ -86,7 +86,7 @@ export default function AdminPage() {
       <div className="min-h-screen bg-[#080808] text-gray-100 flex items-center justify-center relative overflow-hidden">
         {/* Grid background */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: `linear-gradient(#2dd4bf 1px, transparent 1px), linear-gradient(90deg, #2dd4bf 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(#0c2682 1px, transparent 1px), linear-gradient(90deg, #0c2682 1px, transparent 1px)`,
           backgroundSize: '60px 60px'
         }} />
         <div className="font-mono text-sm text-gray-500 tracking-widest uppercase animate-pulse">Loading...</div>
@@ -99,7 +99,7 @@ export default function AdminPage() {
       <div className="min-h-screen bg-[#080808] text-gray-100 flex items-center justify-center relative overflow-hidden">
         {/* Grid background */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: `linear-gradient(#2dd4bf 1px, transparent 1px), linear-gradient(90deg, #2dd4bf 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(#0c2682 1px, transparent 1px), linear-gradient(90deg, #0c2682 1px, transparent 1px)`,
           backgroundSize: '60px 60px'
         }} />
 
@@ -111,13 +111,13 @@ export default function AdminPage() {
         <div className="text-center space-y-8 max-w-md mx-auto px-6 relative z-10">
           <div className="space-y-4">
             <h1 className="text-4xl font-bold tracking-tighter text-white">VapeVision</h1>
-            <div className="w-16 h-[1px] bg-gradient-to-r from-transparent via-teal-400 to-transparent mx-auto" />
+            <div className="w-16 h-[1px] bg-gradient-to-r from-transparent via-blue-600 to-transparent mx-auto" />
             <p className="font-mono text-sm text-gray-500 tracking-widest uppercase">Admin Dashboard — Auth Required</p>
           </div>
 
           <button
             onClick={handleSignIn}
-            className="inline-flex items-center gap-3 px-8 py-4 bg-teal-400 text-black font-mono font-bold text-sm tracking-widest uppercase hover:bg-teal-300 transition-colors"
+            className="inline-flex items-center gap-3 px-8 py-4 bg-blue-600 text-black font-mono font-bold text-sm tracking-widest uppercase hover:bg-blue-700 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -136,7 +136,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-[#080808] text-gray-100 relative overflow-hidden">
       {/* Grid background */}
       <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: `linear-gradient(#2dd4bf 1px, transparent 1px), linear-gradient(90deg, #2dd4bf 1px, transparent 1px)`,
+        backgroundImage: `linear-gradient(#0c2682 1px, transparent 1px), linear-gradient(90deg, #0c2682 1px, transparent 1px)`,
         backgroundSize: '60px 60px'
       }} />
 
@@ -153,7 +153,7 @@ export default function AdminPage() {
           <span className="font-mono text-xs text-gray-600">{user.email}</span>
           <button
             onClick={handleSignOut}
-            className="font-mono text-xs tracking-widest text-gray-500 hover:text-teal-400 uppercase transition-colors"
+            className="font-mono text-xs tracking-widest text-gray-500 hover:text-blue-600 uppercase transition-colors"
           >
             Sign Out
           </button>
