@@ -1,0 +1,417 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+
+// Detection thresholds
+const FACE_DIST_THRESHOLD = 0.3;
+const PINCH_DIST_THRESHOLD = 0.05;
+const TRIGGER_TIME = 1500;
+const FACE_CENTER = { x: 0.5, y: 0.1 };
+
+// Status types
+type Status = "Idle" | "Monitoring" | "Alert triggered";
+
+declare global {
+  interface Window {
+    Hands: any;
+    Camera: any;
+  }
+}
+
+export default function ClientPage() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  const [status, setStatus] = useState<Status>("Idle");
+  const [cameraId, setCameraId] = useState<string>("");
+  const [error, setError] = useState<string>("");
+  const [toast, setToast] = useState<string>("");
+
+  const triggeredRef = useRef(false);
+  const triggerStartRef = useRef<number | null>(null);
+  const handsInstanceRef = useRef<any>(null);
+  const cameraInstanceRef = useRef<any>(null);
+
+  // Get or create camera ID
+  useEffect(() => {
+    let id = localStorage.getItem("vapevision_camera_id");
+    if (!id) {
+      id = `cam_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      localStorage.setItem("vapevision_camera_id", id);
+    }
+    setCameraId(id);
+  }, []);
+
+  // Show toast
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(""), 2000);
+  };
+
+  // Euclidean distance between two points with x,y,z
+  const distance = (p1: any, p2: any) => {
+    return Math.sqrt(
+      Math.pow(p1.x - p2.x, 2) +
+        Math.pow(p1.y - p2.y, 2) +
+        Math.pow((p1.z || 0) - (p2.z || 0), 2)
+    );
+  };
+
+  // Check if hand is near face
+  const isHandNearFace = (landmarks: any[]) => {
+    const wrist = landmarks[0]; // landmark 0
+    const wristToFace = distance(wrist, FACE_CENTER);
+    return wristToFace < FACE_DIST_THRESHOLD && wrist.y > FACE_CENTER.y;
+  };
+
+  // Check if pinch gesture
+  const isPinchGesture = (landmarks: any[]) => {
+    const thumbTip = landmarks[4]; // landmark 4
+    const indexTip = landmarks[8]; // landmark 8
+    const pinchDist = distance(thumbTip, indexTip);
+    return pinchDist < PINCH_DIST_THRESHOLD;
+  };
+
+  // Capture and save to Firestore
+  const captureAndSave = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+
+    ctx.drawImage(videoRef.current, 0, 0);
+
+    const imageData = canvas.toDataURL("image/jpeg", 0.7);
+
+    try {
+      await addDoc(collection(db, "alerts"), {
+        timestamp: serverTimestamp(),
+        cameraId: cameraId,
+        imageData: imageData,
+        processed: false,
+      });
+      showToast("Alert captured!");
+    } catch (err) {
+      console.error("Failed to save alert:", err);
+    }
+  };
+
+  // Reset triggered state
+  const resetTriggered = () => {
+    setTimeout(() => {
+      triggeredRef.current = false;
+      triggerStartRef.current = null;
+      setStatus("Monitoring");
+    }, 3000);
+  };
+
+  // Draw landmarks on overlay canvas
+  const drawLandmarks = (landmarks: any[]) => {
+    const overlayCanvas = overlayCanvasRef.current;
+    if (!overlayCanvas) return;
+
+    const ctx = overlayCanvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+    // Draw face center indicator
+    ctx.fillStyle = "#ef4444";
+    ctx.beginPath();
+    ctx.arc(
+      FACE_CENTER.x * overlayCanvas.width,
+      FACE_CENTER.y * overlayCanvas.height,
+      10,
+      0,
+      2 * Math.PI
+    );
+    ctx.fill();
+
+    // Draw wrist
+    ctx.fillStyle = "#22c55e";
+    ctx.beginPath();
+    ctx.arc(
+      landmarks[0].x * overlayCanvas.width,
+      landmarks[0].y * overlayCanvas.height,
+      8,
+      0,
+      2 * Math.PI
+    );
+    ctx.fill();
+
+    // Draw thumb tip and index tip for pinch detection
+    ctx.fillStyle = "#3b82f6";
+    ctx.beginPath();
+    ctx.arc(
+      landmarks[4].x * overlayCanvas.width,
+      landmarks[4].y * overlayCanvas.height,
+      5,
+      0,
+      2 * Math.PI
+    );
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(
+      landmarks[8].x * overlayCanvas.width,
+      landmarks[8].y * overlayCanvas.height,
+      5,
+      0,
+      2 * Math.PI
+    );
+    ctx.fill();
+  };
+
+  // Initialize camera and MediaPipe
+  useEffect(() => {
+    const video = videoRef.current;
+    const overlayCanvas = overlayCanvasRef.current;
+
+    if (!video || !overlayCanvas) return;
+
+    // Set overlay canvas size
+    overlayCanvas.width = video.videoWidth || 640;
+    overlayCanvas.height = video.videoHeight || 480;
+
+    // Load MediaPipe scripts
+    const loadScripts = () => {
+      return new Promise<void>((resolve) => {
+        const handsScript = document.createElement("script");
+        handsScript.src =
+          "https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.min.js";
+        handsScript.onload = () => {
+          const cameraScript = document.createElement("script");
+          cameraScript.src =
+            "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.min.js";
+          cameraScript.onload = () => resolve();
+          document.head.appendChild(cameraScript);
+        };
+        document.head.appendChild(handsScript);
+      });
+    };
+
+    const initCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+        });
+        video.srcObject = stream;
+        await video.play();
+
+        await loadScripts();
+
+        // Wait for scripts to be available
+        await new Promise<void>((resolve) => {
+          const check = () => {
+            if (window.Hands && window.Camera) {
+              resolve();
+            } else {
+              setTimeout(check, 50);
+            }
+          };
+          check();
+        });
+
+        setStatus("Monitoring");
+
+        // Initialize MediaPipe Hands
+        const hands = new window.Hands({
+          locateFile: (file: string) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${file}`;
+          },
+        });
+
+        hands.setOptions({
+          maxNumHands: 1,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+
+        hands.onResults((results: any) => {
+          if (!overlayCanvasRef.current) return;
+
+          overlayCanvasRef.current.width = video.videoWidth || 640;
+          overlayCanvasRef.current.height = video.videoHeight || 480;
+
+          const ctx = overlayCanvasRef.current.getContext("2d");
+          if (!ctx) return;
+
+          ctx.clearRect(
+            0,
+            0,
+            overlayCanvasRef.current.width,
+            overlayCanvasRef.current.height
+          );
+
+          if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            const landmarks = results.multiHandLandmarks[0];
+
+            // Draw landmarks
+            drawLandmarks(landmarks);
+
+            // Check detection conditions
+            const nearFace = isHandNearFace(landmarks);
+            const pinch = isPinchGesture(landmarks);
+
+            if (nearFace && pinch) {
+              if (!triggerStartRef.current) {
+                triggerStartRef.current = Date.now();
+              }
+
+              const elapsed = Date.now() - triggerStartRef.current;
+
+              if (elapsed >= TRIGGER_TIME && !triggeredRef.current) {
+                triggeredRef.current = true;
+                setStatus("Alert triggered");
+                captureAndSave();
+                resetTriggered();
+              }
+            } else {
+              triggerStartRef.current = null;
+              if (!triggeredRef.current) {
+                setStatus("Monitoring");
+              }
+            }
+          } else {
+            triggerStartRef.current = null;
+            if (!triggeredRef.current) {
+              setStatus("Monitoring");
+            }
+          }
+        });
+
+        handsInstanceRef.current = hands;
+
+        // Initialize Camera
+        const camera = new window.Camera(video, {
+          onFrame: async () => {
+            await hands.send({ image: video });
+          },
+          width: 640,
+          height: 480,
+        });
+
+        cameraInstanceRef.current = camera;
+        await camera.start();
+      } catch (err: any) {
+        setError(
+          err.name === "NotAllowedError"
+            ? "Camera access denied. Please allow camera permissions."
+            : `Camera error: ${err.message}`
+        );
+      }
+    };
+
+    initCamera();
+
+    return () => {
+      if (cameraInstanceRef.current) {
+        cameraInstanceRef.current.stop();
+      }
+      if (handsInstanceRef.current) {
+        handsInstanceRef.current.close();
+      }
+      if (video.srcObject) {
+        const tracks = (video.srcObject as MediaStream).getTracks();
+        tracks.forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  const getStatusColor = () => {
+    switch (status) {
+      case "Idle":
+        return "bg-gray-500";
+      case "Monitoring":
+        return "bg-green-500";
+      case "Alert triggered":
+        return "bg-red-500";
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-gray-100 flex flex-col">
+      {/* Header */}
+      <header className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+        <Link
+          href="/"
+          className="text-gray-400 hover:text-white transition-colors text-sm"
+        >
+          Back to Home
+        </Link>
+        <div className="flex items-center gap-4">
+          {cameraId && (
+            <span className="text-xs text-gray-500 font-mono">{cameraId}</span>
+          )}
+        </div>
+      </header>
+
+      {/* Main content */}
+      <main className="flex-1 flex flex-col items-center justify-center p-6">
+        {error ? (
+          <div className="text-center space-y-4 max-w-md">
+            <div className="text-red-500 text-xl">Camera Error</div>
+            <p className="text-gray-400">{error}</p>
+            <Link
+              href="/"
+              className="inline-block px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors"
+            >
+              Go Back
+            </Link>
+          </div>
+        ) : (
+          <div className="relative w-full max-w-2xl">
+            {/* Status badge */}
+            <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${getStatusColor()}`} />
+              <span className="text-sm font-medium text-white bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm">
+                {status}
+              </span>
+            </div>
+
+            {/* Video and overlay container */}
+            <div className="relative rounded-lg overflow-hidden bg-black">
+              <video
+                ref={videoRef}
+                className="w-full h-auto"
+                playsInline
+                muted
+              />
+              <canvas
+                ref={overlayCanvasRef}
+                className="absolute top-0 left-0 w-full h-full pointer-events-none"
+              />
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
+
+            {/* Toast notification */}
+            {toast && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-pulse">
+                {toast}
+              </div>
+            )}
+
+            {/* Detection info */}
+            <div className="mt-6 text-center text-gray-500 text-sm space-y-2">
+              <p>
+                Hand near face (wrist-to-face distance &lt; {FACE_DIST_THRESHOLD})
+              </p>
+              <p>
+                Pinch gesture (thumb-index distance &lt; {PINCH_DIST_THRESHOLD})
+              </p>
+              <p>Sustained for {TRIGGER_TIME}ms triggers capture</p>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
