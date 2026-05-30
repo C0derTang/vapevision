@@ -35,7 +35,10 @@ export default function ClientPage() {
   const [isFlashing, setIsFlashing] = useState(false);
   const [nearFaceActive, setNearFaceActive] = useState(false);
   const [pinchActive, setPinchActive] = useState(false);
+  const [lipsCovered, setLipsCovered] = useState(false);
   const prevNearFaceRef = useRef(false);
+  const prevLipsCoveredRef = useRef(false);
+  const lipsUncoveredTriggerRef = useRef<number | null>(null);
 
   const triggeredRef = useRef(false);
   const triggerStartRef = useRef<number | null>(null);
@@ -89,6 +92,24 @@ export default function ClientPage() {
     const indexTip = landmarks[8]; // landmark 8
     const pinchDist = distance(thumbTip, indexTip);
     return pinchDist < threshold;
+  };
+
+  // Check if hand is covering lips (between lips and camera)
+  const isLipsCovered = (handLandmarks: any[]) => {
+    if (faceLandmarksRef.current.length === 0) return false;
+    const upperLip = faceLandmarksRef.current[13];
+    const lowerLip = faceLandmarksRef.current[14];
+    const wrist = handLandmarks[0];
+    const thumbTip = handLandmarks[4];
+    const indexTip = handLandmarks[8];
+
+    // Check if hand is in front of lips (between lips z and camera z)
+    // Lower z means closer to camera
+    const lipsCoveredByWrist = wrist.z < upperLip.z && wrist.z < lowerLip.z;
+    const lipsCoveredByThumb = thumbTip.z < upperLip.z && thumbTip.z < lowerLip.z;
+    const lipsCoveredByIndex = indexTip.z < upperLip.z && indexTip.z < lowerLip.z;
+
+    return lipsCoveredByWrist || lipsCoveredByThumb || lipsCoveredByIndex;
   };
 
   // Capture and save to Firestore
@@ -184,6 +205,39 @@ export default function ClientPage() {
       nose.x * overlayCanvas.width,
       nose.y * overlayCanvas.height,
       10,
+      0,
+      2 * Math.PI
+    );
+    ctx.fill();
+  };
+
+  // Draw upper and lower lips (FaceMesh landmarks 13 and 14)
+  const drawLips = () => {
+    const overlayCanvas = overlayCanvasRef.current;
+    if (!overlayCanvas || faceLandmarksRef.current.length === 0) return;
+    const ctx = overlayCanvas.getContext("2d");
+    if (!ctx) return;
+    const upperLip = faceLandmarksRef.current[13];
+    const lowerLip = faceLandmarksRef.current[14];
+
+    // Draw upper lip
+    ctx.fillStyle = "#a855f7";
+    ctx.beginPath();
+    ctx.arc(
+      upperLip.x * overlayCanvas.width,
+      upperLip.y * overlayCanvas.height,
+      6,
+      0,
+      2 * Math.PI
+    );
+    ctx.fill();
+
+    // Draw lower lip
+    ctx.beginPath();
+    ctx.arc(
+      lowerLip.x * overlayCanvas.width,
+      lowerLip.y * overlayCanvas.height,
+      6,
       0,
       2 * Math.PI
     );
@@ -291,10 +345,12 @@ export default function ClientPage() {
 
           ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
           drawNose();
+          drawLips();
 
           let anyNearFace = false;
           let anyPinch = false;
           let anyTriggered = false;
+          let anyLipsCovered = false;
 
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             for (const handLandmarks of results.multiHandLandmarks) {
@@ -309,11 +365,13 @@ export default function ClientPage() {
 
               const nearFace = isHandNearFace(handLandmarks, effectiveFaceDist);
               const pinch = isPinchGesture(handLandmarks, effectivePinchDist);
+              const lipsCov = isLipsCovered(handLandmarks);
 
               drawLandmarks(handLandmarks, "#22c55e", 8, nearFace);
 
               if (nearFace) anyNearFace = true;
               if (pinch) anyPinch = true;
+              if (lipsCov) anyLipsCovered = true;
 
               if (nearFace && pinch) {
                 anyTriggered = true;
@@ -332,7 +390,9 @@ export default function ClientPage() {
             }
 
             const prevNearFace = prevNearFaceRef.current;
+            const prevLipsCovered = prevLipsCoveredRef.current;
             prevNearFaceRef.current = anyNearFace;
+            prevLipsCoveredRef.current = anyLipsCovered;
 
             // Reset everything when nearFace ends for any hand
             if (prevNearFace && !anyNearFace) {
@@ -344,16 +404,38 @@ export default function ClientPage() {
               }
             }
 
+            // Lips uncovered trigger: if lips were covered, now uncovered, and nearFace+pinch active
+            if (prevLipsCovered && !anyLipsCovered && anyNearFace && anyPinch && !triggeredRef.current) {
+              if (!lipsUncoveredTriggerRef.current) {
+                lipsUncoveredTriggerRef.current = Date.now();
+              }
+              const elapsed = Date.now() - lipsUncoveredTriggerRef.current;
+              if (elapsed >= TRIGGER_TIME) {
+                triggeredRef.current = true;
+                setStatus("Alert triggered");
+                captureAndSave().then(() => {
+                  if (mountedRef.current) resetTriggered();
+                });
+              }
+            } else if (!anyLipsCovered && !anyNearFace) {
+              // Reset if no lips covered and no near face
+              lipsUncoveredTriggerRef.current = null;
+            }
+
             setNearFaceActive(anyNearFace);
             setPinchActive(anyPinch);
+            setLipsCovered(anyLipsCovered);
             setIsFlashing(anyTriggered);
           } else {
             setNearFaceActive(false);
             setPinchActive(false);
+            setLipsCovered(false);
             setIsFlashing(false);
             triggerStartRef.current = null;
             triggeredRef.current = false;
             prevNearFaceRef.current = false;
+            prevLipsCoveredRef.current = false;
+            lipsUncoveredTriggerRef.current = null;
             if (status !== "Alert triggered") {
               setStatus("Monitoring");
             }
@@ -485,7 +567,7 @@ export default function ClientPage() {
             )}
 
             {/* Detection info */}
-            <div className="mt-8 grid grid-cols-3 gap-6 text-center font-mono text-xs">
+            <div className="mt-8 grid grid-cols-4 gap-6 text-center font-mono text-xs">
               <div className="space-y-2">
                 <div className={`text-lg font-bold ${nearFaceActive ? 'text-blue-600' : 'text-gray-400'}`}>
                   {nearFaceActive ? 'ACTIVE' : '—'}
@@ -497,6 +579,12 @@ export default function ClientPage() {
                   {pinchActive ? 'PINCH' : '—'}
                 </div>
                 <div className="text-gray-400 tracking-widest uppercase">Gesture</div>
+              </div>
+              <div className="space-y-2">
+                <div className={`text-lg font-bold ${lipsCovered ? 'text-blue-600' : 'text-gray-400'}`}>
+                  {lipsCovered ? 'COVERED' : '—'}
+                </div>
+                <div className="text-gray-400 tracking-widest uppercase">Lips</div>
               </div>
               <div className="space-y-2">
                 <div className={`text-lg font-bold ${isFlashing ? 'text-blue-600 animate-pulse' : 'text-gray-400'}`}>
