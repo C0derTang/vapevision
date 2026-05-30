@@ -89,12 +89,18 @@ export default function ClientPage() {
     const zDiff = Math.abs((thumbTip.z || 0) - (indexTip.z || 0));
     const fingersZAligned = zDiff < 0.05;
 
-    // Lips not visible: wrist is between lip midpoint and nose (hand covering mouth)
-    const lipMidY = (upperLip.y + lowerLip.y) / 2;
-    const noseY = nose.y;
-    const lipsBlocked = wrist.y > lipMidY && wrist.y < noseY;
+    // Lips not visible: wrist position overlaps with lip region (covering mouth)
+    // Convert normalized coords to canvas coords for overlap check
+    const overlayCanvas = overlayCanvasRef.current;
+    const lipMinX = Math.min(upperLip.x, lowerLip.x) * (overlayCanvas?.width || 640);
+    const lipMaxX = Math.max(upperLip.x, lowerLip.x) * (overlayCanvas?.width || 640);
+    const lipMinY = Math.min(upperLip.y, lowerLip.y) * (overlayCanvas?.height || 480);
+    const lipMaxY = Math.max(upperLip.y, lowerLip.y) * (overlayCanvas?.height || 480);
+    const wristX = wrist.x * (overlayCanvas?.width || 640);
+    const wristY = wrist.y * (overlayCanvas?.height || 480);
+    const lipsNotVisible = wristX >= lipMinX && wristX <= lipMaxX && wristY >= lipMinY && wristY <= lipMaxY;
 
-    return wristDist < threshold && belowNose && fingersZAligned && lipsBlocked;
+    return wristDist < threshold && belowNose && fingersZAligned && lipsNotVisible;
   };
 
   // Check if pinch gesture
