@@ -15,6 +15,8 @@ interface Alert {
   processed: boolean;
 }
 
+type SortOrder = "desc" | "asc";
+
 function formatTimestamp(ts: Timestamp | null): string {
   if (!ts) return "—";
   const date = ts.toDate();
@@ -29,6 +31,9 @@ export default function AdminPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [filterCamera, setFilterCamera] = useState<string>("");
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -41,17 +46,20 @@ export default function AdminPage() {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(collection(db, "alerts"), orderBy("timestamp", "desc"));
+    const q = query(collection(db, "alerts"), orderBy("timestamp", sortOrder));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const alertData: Alert[] = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as Alert[];
       setAlerts(alertData);
+      // Trigger staggered animation on data load
+      setLoaded(false);
+      setTimeout(() => setLoaded(true), 50);
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, sortOrder]);
 
   const handleSignIn = async () => {
     try {
@@ -103,10 +111,17 @@ export default function AdminPage() {
     }
   };
 
+  // Get unique camera IDs for filter
+  const cameraIds = [...new Set(alerts.map(a => a.cameraId))].sort();
+
+  // Filter alerts
+  const filteredAlerts = filterCamera
+    ? alerts.filter(a => a.cameraId === filterCamera)
+    : alerts;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#080808] text-gray-100 flex items-center justify-center relative overflow-hidden">
-        {/* Grid background */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: `linear-gradient(#0c2682 1px, transparent 1px), linear-gradient(90deg, #0c2682 1px, transparent 1px)`,
           backgroundSize: '60px 60px'
@@ -119,24 +134,19 @@ export default function AdminPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-[#080808] text-gray-100 flex items-center justify-center relative overflow-hidden">
-        {/* Grid background */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: `linear-gradient(#0c2682 1px, transparent 1px), linear-gradient(90deg, #0c2682 1px, transparent 1px)`,
           backgroundSize: '60px 60px'
         }} />
-
-        {/* Noise overlay */}
         <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`
         }} />
-
         <div className="text-center space-y-8 max-w-md mx-auto px-6 relative z-10">
           <div className="space-y-4">
             <h1 className="text-4xl font-bold tracking-tighter text-white">VapeVision</h1>
             <div className="w-16 h-[1px] bg-gradient-to-r from-transparent via-blue-600 to-transparent mx-auto" />
             <p className="font-mono text-sm text-gray-300 tracking-widest uppercase">Admin Dashboard — Auth Required</p>
           </div>
-
           <button
             onClick={handleSignIn}
             className="inline-flex items-center gap-3 px-8 py-4 bg-blue-600 text-black font-mono font-bold text-sm tracking-widest uppercase hover:bg-blue-700 transition-colors"
@@ -156,22 +166,21 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-[#080808] text-gray-100 relative overflow-hidden">
-      {/* Grid background */}
       <div className="absolute inset-0 opacity-[0.03]" style={{
         backgroundImage: `linear-gradient(#0c2682 1px, transparent 1px), linear-gradient(90deg, #0c2682 1px, transparent 1px)`,
         backgroundSize: '60px 60px'
       }} />
 
       {/* Header */}
-      <header className="px-6 py-4 border-b border-gray-900 flex items-center justify-between relative z-10">
+      <header className="px-6 py-5 border-b border-gray-900 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-6">
           <h1 className="font-mono text-sm font-semibold tracking-widest text-white uppercase">VapeVision</h1>
           <div className="w-px h-4 bg-gray-800" />
           <span className="font-mono text-xs text-gray-300 tracking-widest uppercase">
-            {alerts.length} Alert{alerts.length !== 1 ? 's' : ''}
+            {filteredAlerts.length} Alert{filteredAlerts.length !== 1 ? 's' : ''}
           </span>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <span className="font-mono text-xs text-gray-400">{user.email}</span>
           <button
             onClick={handleSignOut}
@@ -182,34 +191,71 @@ export default function AdminPage() {
         </div>
       </header>
 
+      {/* Controls */}
+      <div className="px-6 py-4 border-b border-gray-900 flex items-center gap-6 relative z-10">
+        <div className="flex items-center gap-3">
+          <label className="font-mono text-xs text-gray-400 tracking-widest uppercase">Sort:</label>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+            className="bg-gray-900/50 border border-gray-800 text-gray-300 font-mono text-xs px-3 py-2 rounded focus:border-blue-600 outline-none cursor-pointer"
+          >
+            <option value="desc">Newest First</option>
+            <option value="asc">Oldest First</option>
+          </select>
+        </div>
+        {cameraIds.length > 1 && (
+          <div className="flex items-center gap-3">
+            <label className="font-mono text-xs text-gray-400 tracking-widest uppercase">Camera:</label>
+            <select
+              value={filterCamera}
+              onChange={(e) => setFilterCamera(e.target.value)}
+              className="bg-gray-900/50 border border-gray-800 text-gray-300 font-mono text-xs px-3 py-2 rounded focus:border-blue-600 outline-none cursor-pointer"
+            >
+              <option value="">All Cameras</option>
+              {cameraIds.map(id => (
+                <option key={id} value={id}>{id}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
       {/* Alert Grid */}
       <main className="p-6 relative z-10">
-        {alerts.length === 0 ? (
+        {filteredAlerts.length === 0 ? (
           <div className="text-center font-mono text-sm text-gray-400 tracking-widest uppercase py-24">No Alerts</div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {alerts.map((alert) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {filteredAlerts.map((alert, index) => (
               <div
                 key={alert.id}
                 onClick={() => setSelectedAlert(alert)}
-                className="relative aspect-square bg-gray-900/50 border border-gray-800 rounded-lg overflow-hidden cursor-pointer hover:border-gray-600 transition-all group"
+                className={`relative aspect-square bg-gray-900/50 border border-gray-800 rounded-lg overflow-hidden cursor-pointer transition-all duration-300 group
+                  ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
+                `}
+                style={{
+                  transitionDelay: loaded ? `${index * 30}ms` : '0ms'
+                }}
               >
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 <img
                   src={alert.imageData}
                   alt={`Alert from ${alert.cameraId}`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
-                {/* Camera ID badge */}
-                <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/70 font-mono text-xs text-gray-300 tracking-widest uppercase rounded">
-                  {alert.cameraId.split('_')[1]?.slice(0, 6) || alert.cameraId.slice(-6)}
+                <div className="absolute inset-0 border-2 border-transparent group-hover:border-blue-600/50 transition-colors duration-300 rounded-lg" />
+                <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="px-2 py-1 bg-black/80 font-mono text-xs text-gray-300 tracking-widest uppercase rounded backdrop-blur-sm">
+                    {alert.cameraId.split('_')[1]?.slice(0, 6) || alert.cameraId.slice(-6)}
+                  </div>
                 </div>
-                {/* Delete button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setDeleteConfirmId(alert.id);
                   }}
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-2 bg-black/70 text-gray-400 hover:text-red-400 transition-all rounded"
+                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-2 bg-black/80 text-gray-400 hover:text-red-400 transition-all rounded backdrop-blur-sm"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                     <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-.382l-.724 1.447A1 1 0 009 2zM8 6a1 1 0 011-1h6a1 1 0 011 1v7.586l.707-.707A1 1 0 0116 14H8V6z" clipRule="evenodd" />
@@ -223,25 +269,28 @@ export default function AdminPage() {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-xl p-6 max-w-sm w-full mx-4 border border-gray-700">
-            <h3 className="text-lg font-semibold mb-2">Delete Alert</h3>
-            <p className="text-gray-400 text-sm mb-6">This action cannot be undone.</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                disabled={deleting}
-                className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50"
-              >
-                {deleting ? "Deleting..." : "Delete"}
-              </button>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="relative bg-[#0a0a0a] border border-gray-800 rounded-lg p-6 max-w-sm w-full mx-4">
+            <div className="absolute inset-0 bg-gradient-to-b from-blue-600/5 to-transparent pointer-events-none" />
+            <div className="relative">
+              <h3 className="font-mono text-sm font-semibold tracking-widest text-white uppercase mb-2">Delete Alert</h3>
+              <p className="text-gray-400 text-sm mb-6">This action cannot be undone.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-mono text-xs tracking-widest uppercase border border-gray-700 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-500 text-white font-mono text-xs tracking-widest uppercase font-bold transition-colors disabled:opacity-50"
+                >
+                  {deleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
