@@ -1,8 +1,10 @@
 import Link from 'next/link'
+import Header from '@/components/Header'
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-100 flex flex-col">
+      <Header />
       {/* Hero Section */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-24">
         <div className="max-w-2xl text-center space-y-8">
