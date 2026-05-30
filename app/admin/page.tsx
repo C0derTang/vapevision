@@ -28,6 +28,7 @@ export default function AdminPage() {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -82,17 +83,24 @@ export default function AdminPage() {
   };
 
   const handleVerify = async (alert: Alert, confirmed: boolean) => {
-    if (confirmed) {
-      await addDoc(collection(db, "vaping_cases"), {
-        timestamp: alert.timestamp,
-        cameraId: alert.cameraId,
-        imageData: alert.imageData,
-        confirmedAt: serverTimestamp(),
-        originalAlertId: alert.id,
-      });
+    setVerifying(true);
+    try {
+      if (confirmed) {
+        await addDoc(collection(db, "vaping_cases"), {
+          timestamp: alert.timestamp,
+          cameraId: alert.cameraId,
+          imageData: alert.imageData,
+          confirmedAt: serverTimestamp(),
+          originalAlertId: alert.id,
+        });
+      }
+      await deleteDoc(doc(db, "alerts", alert.id));
+      setSelectedAlert(null);
+    } catch (err) {
+      console.error("Verify error:", err);
+    } finally {
+      setVerifying(false);
     }
-    await deleteDoc(doc(db, "alerts", alert.id));
-    setSelectedAlert(null);
   };
 
   if (loading) {
@@ -248,6 +256,7 @@ export default function AdminPage() {
           onClose={() => setSelectedAlert(null)}
           onConfirmVaping={() => handleVerify(selectedAlert, true)}
           onFalsePositive={() => handleVerify(selectedAlert, false)}
+          verifying={verifying}
         />
       )}
     </div>

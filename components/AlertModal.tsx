@@ -5,6 +5,7 @@ interface AlertModalProps {
   onClose: () => void;
   onConfirmVaping: () => void;
   onFalsePositive: () => void;
+  verifying?: boolean;
 }
 
 export default function AlertModal({
@@ -14,6 +15,7 @@ export default function AlertModal({
   onClose,
   onConfirmVaping,
   onFalsePositive,
+  verifying = false,
 }: AlertModalProps) {
   return (
     <div
@@ -51,15 +53,17 @@ export default function AlertModal({
         <div className="flex gap-4 px-6 pb-6">
           <button
             onClick={onFalsePositive}
-            className="flex-1 px-6 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-mono text-sm tracking-widest uppercase border border-gray-700 transition-all"
+            disabled={verifying}
+            className="flex-1 px-6 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-mono text-sm tracking-widest uppercase border border-gray-700 transition-all disabled:opacity-50"
           >
-            False Positive
+            {verifying ? "Verifying..." : "False Positive"}
           </button>
           <button
             onClick={onConfirmVaping}
-            className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-black font-mono text-sm tracking-widest uppercase font-bold transition-all"
+            disabled={verifying}
+            className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-black font-mono text-sm tracking-widest uppercase font-bold transition-all disabled:opacity-50"
           >
-            Confirm Vaping
+            {verifying ? "Verifying..." : "Confirm Vaping"}
           </button>
         </div>
       </div>
