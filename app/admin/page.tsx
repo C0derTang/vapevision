@@ -89,7 +89,7 @@ export default function AdminPage() {
           backgroundImage: `linear-gradient(#0c2682 1px, transparent 1px), linear-gradient(90deg, #0c2682 1px, transparent 1px)`,
           backgroundSize: '60px 60px'
         }} />
-        <div className="font-mono text-sm text-gray-500 tracking-widest uppercase animate-pulse">Loading...</div>
+        <div className="font-mono text-sm text-gray-300 tracking-widest uppercase animate-pulse">Loading...</div>
       </div>
     );
   }
@@ -112,7 +112,7 @@ export default function AdminPage() {
           <div className="space-y-4">
             <h1 className="text-4xl font-bold tracking-tighter text-white">VapeVision</h1>
             <div className="w-16 h-[1px] bg-gradient-to-r from-transparent via-blue-600 to-transparent mx-auto" />
-            <p className="font-mono text-sm text-gray-500 tracking-widest uppercase">Admin Dashboard — Auth Required</p>
+            <p className="font-mono text-sm text-gray-300 tracking-widest uppercase">Admin Dashboard — Auth Required</p>
           </div>
 
           <button
@@ -145,15 +145,15 @@ export default function AdminPage() {
         <div className="flex items-center gap-6">
           <h1 className="font-mono text-sm font-semibold tracking-widest text-white uppercase">VapeVision</h1>
           <div className="w-px h-4 bg-gray-800" />
-          <span className="font-mono text-xs text-gray-500 tracking-widest uppercase">
+          <span className="font-mono text-xs text-gray-300 tracking-widest uppercase">
             {alerts.length} Alert{alerts.length !== 1 ? 's' : ''}
           </span>
         </div>
         <div className="flex items-center gap-6">
-          <span className="font-mono text-xs text-gray-600">{user.email}</span>
+          <span className="font-mono text-xs text-gray-400">{user.email}</span>
           <button
             onClick={handleSignOut}
-            className="font-mono text-xs tracking-widest text-gray-500 hover:text-blue-600 uppercase transition-colors"
+            className="font-mono text-xs tracking-widest text-gray-300 hover:text-blue-600 uppercase transition-colors"
           >
             Sign Out
           </button>
@@ -163,7 +163,7 @@ export default function AdminPage() {
       {/* Alert List */}
       <main className="p-6 relative z-10">
         {alerts.length === 0 ? (
-          <div className="text-center font-mono text-sm text-gray-600 tracking-widest uppercase py-24">No Alerts</div>
+          <div className="text-center font-mono text-sm text-gray-400 tracking-widest uppercase py-24">No Alerts</div>
         ) : (
           <div className="space-y-3">
             {alerts.map((alert) => (
@@ -188,7 +188,7 @@ export default function AdminPage() {
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-gray-500 mt-1">
+                  <div className="text-sm text-gray-300 mt-1">
                     {formatTimestamp(alert.timestamp)}
                   </div>
                 </div>

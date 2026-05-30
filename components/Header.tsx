@@ -18,13 +18,13 @@ export default function Header() {
         <nav className="flex items-center gap-8">
           <Link
             href="/client"
-            className="font-mono text-xs tracking-widest text-gray-500 hover:text-blue-600 uppercase transition-colors"
+            className="font-mono text-xs tracking-widest text-gray-300 hover:text-blue-600 uppercase transition-colors"
           >
             Monitor
           </Link>
           <Link
             href="/admin"
-            className="font-mono text-xs tracking-widest text-gray-500 hover:text-blue-600 uppercase transition-colors"
+            className="font-mono text-xs tracking-widest text-gray-300 hover:text-blue-600 uppercase transition-colors"
           >
             Admin
           </Link>

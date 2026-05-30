@@ -428,13 +428,13 @@ export default function ClientPage() {
       <header className="px-6 py-4 border-b border-gray-900 flex items-center justify-between relative z-10">
         <Link
           href="/"
-          className="font-mono text-xs tracking-widest text-gray-500 hover:text-blue-600 uppercase transition-colors"
+          className="font-mono text-xs tracking-widest text-gray-300 hover:text-blue-600 uppercase transition-colors"
         >
           ← Back to Home
         </Link>
         <div className="flex items-center gap-4">
           {cameraId && (
-            <span className="font-mono text-xs text-gray-600 tracking-widest">{cameraId}</span>
+            <span className="font-mono text-xs text-gray-400 tracking-widest">{cameraId}</span>
           )}
         </div>
       </header>
@@ -444,7 +444,7 @@ export default function ClientPage() {
         {error ? (
           <div className="text-center space-y-6 max-w-md">
             <div className="font-mono text-red-400 text-xl tracking-widest uppercase">Camera Error</div>
-            <p className="text-gray-500 font-mono text-sm">{error}</p>
+            <p className="text-gray-300 font-mono text-sm">{error}</p>
             <Link
               href="/"
               className="inline-block px-6 py-3 bg-gray-900 hover:bg-gray-800 text-gray-300 font-mono text-sm tracking-widest uppercase border border-gray-800 transition-all"
@@ -487,22 +487,22 @@ export default function ClientPage() {
             {/* Detection info */}
             <div className="mt-8 grid grid-cols-3 gap-6 text-center font-mono text-xs">
               <div className="space-y-2">
-                <div className={`text-lg font-bold ${nearFaceActive ? 'text-blue-600' : 'text-gray-600'}`}>
+                <div className={`text-lg font-bold ${nearFaceActive ? 'text-blue-600' : 'text-gray-400'}`}>
                   {nearFaceActive ? 'ACTIVE' : '—'}
                 </div>
-                <div className="text-gray-600 tracking-widest uppercase">Near Face</div>
+                <div className="text-gray-400 tracking-widest uppercase">Near Face</div>
               </div>
               <div className="space-y-2">
-                <div className={`text-lg font-bold ${pinchActive ? 'text-blue-600' : 'text-gray-600'}`}>
+                <div className={`text-lg font-bold ${pinchActive ? 'text-blue-600' : 'text-gray-400'}`}>
                   {pinchActive ? 'PINCH' : '—'}
                 </div>
-                <div className="text-gray-600 tracking-widest uppercase">Gesture</div>
+                <div className="text-gray-400 tracking-widest uppercase">Gesture</div>
               </div>
               <div className="space-y-2">
-                <div className={`text-lg font-bold ${isFlashing ? 'text-blue-600 animate-pulse' : 'text-gray-600'}`}>
+                <div className={`text-lg font-bold ${isFlashing ? 'text-blue-600 animate-pulse' : 'text-gray-400'}`}>
                   {TRIGGER_TIME}ms
                 </div>
-                <div className="text-gray-600 tracking-widest uppercase">Trigger</div>
+                <div className="text-gray-400 tracking-widest uppercase">Trigger</div>
               </div>
             </div>
           </div>

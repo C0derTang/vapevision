@@ -48,7 +48,7 @@ export default function Home() {
           </p>
 
           {/* Description */}
-          <p className="text-gray-500 text-base leading-relaxed max-w-lg mx-auto font-mono text-sm" style={{ animation: 'fadeIn 0.8s ease-out 0.6s both' }}>
+          <p className="text-gray-300 text-base leading-relaxed max-w-lg mx-auto font-mono text-sm" style={{ animation: 'fadeIn 0.8s ease-out 0.6s both' }}>
             <span className="text-blue-600/40">&gt;</span> Real-time hand tracking and gesture recognition via MediaPipe.
             <br />
             Detects proximity to face and object manipulation patterns.
@@ -91,20 +91,20 @@ export default function Home() {
           </div>
 
           {/* Stats */}
-          <div className="flex items-center justify-center gap-16 pt-16 font-mono text-xs text-gray-600" style={{ animation: 'fadeIn 0.8s ease-out 1s both' }}>
+          <div className="flex items-center justify-center gap-16 pt-16 font-mono text-xs text-gray-400" style={{ animation: 'fadeIn 0.8s ease-out 1s both' }}>
             <div className="text-center">
               <div className="text-2xl font-bold text-gray-400">21</div>
-              <div className="text-gray-600 tracking-widest uppercase mt-1">Landmarks</div>
+              <div className="text-gray-400 tracking-widest uppercase mt-1">Landmarks</div>
             </div>
             <div className="w-px h-8 bg-gray-800" />
             <div className="text-center">
               <div className="text-2xl font-bold text-gray-400">1.5s</div>
-              <div className="text-gray-600 tracking-widest uppercase mt-1">Detection Window</div>
+              <div className="text-gray-400 tracking-widest uppercase mt-1">Detection Window</div>
             </div>
             <div className="w-px h-8 bg-gray-800" />
             <div className="text-center">
               <div className="text-2xl font-bold text-gray-400">0.05</div>
-              <div className="text-gray-600 tracking-widest uppercase mt-1">Pinch Threshold</div>
+              <div className="text-gray-400 tracking-widest uppercase mt-1">Pinch Threshold</div>
             </div>
           </div>
         </div>
@@ -112,7 +112,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="px-6 py-8 border-t border-gray-900 relative z-10">
-        <div className="max-w-3xl mx-auto flex items-center justify-between font-mono text-xs text-gray-600">
+        <div className="max-w-3xl mx-auto flex items-center justify-between font-mono text-xs text-gray-400">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-gray-700" />
             <span>2026 VapeVision</span>
