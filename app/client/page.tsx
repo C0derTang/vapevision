@@ -6,8 +6,9 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 // Detection thresholds
-const FACE_DIST_THRESHOLD = 1;
-const PINCH_DIST_THRESHOLD = 0.05;
+const REFERENCE_HAND_SIZE = 0.15; // normalized units, ~arm's length
+const FACE_DIST_THRESHOLD = 0.1;
+const PINCH_DIST_THRESHOLD = 0.1;
 const TRIGGER_TIME = 1500;
 const FACE_CENTER = { x: 0.5, y: 0.1 };
 
@@ -70,20 +71,20 @@ export default function ClientPage() {
   };
 
   // Check if hand is near face using actual face landmarks
-  const isHandNearFace = (handLandmarks: any[]) => {
+  const isHandNearFace = (handLandmarks: any[], threshold: number) => {
     if (faceLandmarksRef.current.length === 0) return false;
     const nose = faceLandmarksRef.current[1]; // landmark 1 = nose tip in FaceMesh
     const wrist = handLandmarks[0];
     const wristDist = distance(wrist, nose);
-    return wristDist < FACE_DIST_THRESHOLD;
+    return wristDist < threshold;
   };
 
   // Check if pinch gesture
-  const isPinchGesture = (landmarks: any[]) => {
+  const isPinchGesture = (landmarks: any[], threshold: number) => {
     const thumbTip = landmarks[4]; // landmark 4
     const indexTip = landmarks[8]; // landmark 8
     const pinchDist = distance(thumbTip, indexTip);
-    return pinchDist < PINCH_DIST_THRESHOLD;
+    return pinchDist < threshold;
   };
 
   // Capture and save to Firestore
@@ -124,58 +125,37 @@ export default function ClientPage() {
   };
 
   // Draw landmarks on overlay canvas
-  const drawLandmarks = (landmarks: any[]) => {
+  const drawLandmarks = (landmarks: any[], color: string, radius: number) => {
     const overlayCanvas = overlayCanvasRef.current;
     if (!overlayCanvas) return;
 
     const ctx = overlayCanvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-
-    // Draw face nose landmark if available
-    if (faceLandmarksRef.current.length > 0) {
-      const nose = faceLandmarksRef.current[1]; // landmark 1 = nose tip
-      ctx.fillStyle = "#ef4444";
-      ctx.beginPath();
-      ctx.arc(
-        nose.x * overlayCanvas.width,
-        nose.y * overlayCanvas.height,
-        10,
-        0,
-        2 * Math.PI
-      );
-      ctx.fill();
-    }
-
-    // Draw wrist
-    ctx.fillStyle = "#22c55e";
+    ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(
       landmarks[0].x * overlayCanvas.width,
       landmarks[0].y * overlayCanvas.height,
-      8,
+      radius,
       0,
       2 * Math.PI
     );
     ctx.fill();
+  };
 
-    // Draw thumb tip and index tip for pinch detection
-    ctx.fillStyle = "#3b82f6";
+  const drawNose = () => {
+    const overlayCanvas = overlayCanvasRef.current;
+    if (!overlayCanvas || faceLandmarksRef.current.length === 0) return;
+    const ctx = overlayCanvas.getContext("2d");
+    if (!ctx) return;
+    const nose = faceLandmarksRef.current[1];
+    ctx.fillStyle = "#ef4444";
     ctx.beginPath();
     ctx.arc(
-      landmarks[4].x * overlayCanvas.width,
-      landmarks[4].y * overlayCanvas.height,
-      5,
-      0,
-      2 * Math.PI
-    );
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(
-      landmarks[8].x * overlayCanvas.width,
-      landmarks[8].y * overlayCanvas.height,
-      5,
+      nose.x * overlayCanvas.width,
+      nose.y * overlayCanvas.height,
+      10,
       0,
       2 * Math.PI
     );
@@ -266,7 +246,7 @@ export default function ClientPage() {
         });
 
         hands.setOptions({
-          maxNumHands: 1,
+          maxNumHands: 4,
           modelComplexity: 1,
           minDetectionConfidence: 0.5,
           minTrackingConfidence: 0.5,
@@ -281,29 +261,53 @@ export default function ClientPage() {
           const ctx = overlayCanvasRef.current.getContext("2d");
           if (!ctx) return;
 
-          ctx.clearRect(
-            0,
-            0,
-            overlayCanvasRef.current.width,
-            overlayCanvasRef.current.height
-          );
+          ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
+          drawNose();
+
+          let anyNearFace = false;
+          let anyPinch = false;
+          let anyTriggered = false;
 
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-            const landmarks = results.multiHandLandmarks[0];
+            for (const handLandmarks of results.multiHandLandmarks) {
+              drawLandmarks(handLandmarks, "#22c55e", 8);
 
-            drawLandmarks(landmarks);
+              // Compute hand size for adaptive threshold scaling
+              const wrist = handLandmarks[0];
+              const middleMcp = handLandmarks[9]; // landmark 9 = middle finger MCP
+              const handSize = distance(wrist, middleMcp);
+              const scale = handSize / REFERENCE_HAND_SIZE;
 
-            const nearFace = isHandNearFace(landmarks);
-            const pinch = isPinchGesture(landmarks);
+              const effectiveFaceDist = FACE_DIST_THRESHOLD * scale;
+              const effectivePinchDist = PINCH_DIST_THRESHOLD * scale;
+
+              const nearFace = isHandNearFace(handLandmarks, effectiveFaceDist);
+              const pinch = isPinchGesture(handLandmarks, effectivePinchDist);
+
+              if (nearFace) anyNearFace = true;
+              if (pinch) anyPinch = true;
+
+              if (nearFace && pinch) {
+                anyTriggered = true;
+                if (!triggerStartRef.current) {
+                  triggerStartRef.current = Date.now();
+                }
+                const elapsed = Date.now() - triggerStartRef.current;
+                if (elapsed >= TRIGGER_TIME && !triggeredRef.current) {
+                  triggeredRef.current = true;
+                  setStatus("Alert triggered");
+                  captureAndSave().then(() => {
+                    if (mountedRef.current) resetTriggered();
+                  });
+                }
+              }
+            }
 
             const prevNearFace = prevNearFaceRef.current;
-            prevNearFaceRef.current = nearFace;
+            prevNearFaceRef.current = anyNearFace;
 
-            setNearFaceActive(nearFace);
-            setPinchActive(pinch);
-
-            // Reset everything when nearFace ends
-            if (prevNearFace && !nearFace) {
+            // Reset everything when nearFace ends for any hand
+            if (prevNearFace && !anyNearFace) {
               triggerStartRef.current = null;
               triggeredRef.current = false;
               setIsFlashing(false);
@@ -312,25 +316,9 @@ export default function ClientPage() {
               }
             }
 
-            if (nearFace && pinch) {
-              setIsFlashing(true);
-              if (!triggerStartRef.current) {
-                triggerStartRef.current = Date.now();
-              }
-
-              const elapsed = Date.now() - triggerStartRef.current;
-
-              if (elapsed >= TRIGGER_TIME && !triggeredRef.current) {
-                triggeredRef.current = true;
-                setStatus("Alert triggered");
-                setIsFlashing(false);
-                captureAndSave().then(() => {
-                  if (mountedRef.current) resetTriggered();
-                });
-              }
-            } else if (!pinch) {
-              setPinchActive(false);
-            }
+            setNearFaceActive(anyNearFace);
+            setPinchActive(anyPinch);
+            setIsFlashing(anyTriggered);
           } else {
             setNearFaceActive(false);
             setPinchActive(false);
@@ -338,7 +326,7 @@ export default function ClientPage() {
             triggerStartRef.current = null;
             triggeredRef.current = false;
             prevNearFaceRef.current = false;
-            if (!triggeredRef.current) {
+            if (status !== "Alert triggered") {
               setStatus("Monitoring");
             }
           }
