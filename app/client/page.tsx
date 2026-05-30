@@ -18,6 +18,7 @@ declare global {
   interface Window {
     Hands: any;
     Camera: any;
+    FaceMesh: any;
   }
 }
 
@@ -37,8 +38,10 @@ export default function ClientPage() {
   const triggeredRef = useRef(false);
   const triggerStartRef = useRef<number | null>(null);
   const handsInstanceRef = useRef<any>(null);
+  const faceMeshInstanceRef = useRef<any>(null);
   const cameraInstanceRef = useRef<any>(null);
   const mountedRef = useRef(true);
+  const faceLandmarksRef = useRef<any[]>([]);
 
   // Get or create camera ID
   useEffect(() => {
@@ -65,11 +68,13 @@ export default function ClientPage() {
     );
   };
 
-  // Check if hand is near face
-  const isHandNearFace = (landmarks: any[]) => {
-    const wrist = landmarks[0]; // landmark 0
-    const wristToFace = distance(wrist, FACE_CENTER);
-    return wristToFace < FACE_DIST_THRESHOLD && wrist.y > FACE_CENTER.y;
+  // Check if hand is near face using actual face landmarks
+  const isHandNearFace = (handLandmarks: any[]) => {
+    if (faceLandmarksRef.current.length === 0) return false;
+    const nose = faceLandmarksRef.current[1]; // landmark 1 = nose tip in FaceMesh
+    const wrist = handLandmarks[0];
+    const wristDist = distance(wrist, nose);
+    return wristDist < FACE_DIST_THRESHOLD;
   };
 
   // Check if pinch gesture
@@ -127,17 +132,20 @@ export default function ClientPage() {
 
     ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-    // Draw face center indicator
-    ctx.fillStyle = "#ef4444";
-    ctx.beginPath();
-    ctx.arc(
-      FACE_CENTER.x * overlayCanvas.width,
-      FACE_CENTER.y * overlayCanvas.height,
-      10,
-      0,
-      2 * Math.PI
-    );
-    ctx.fill();
+    // Draw face nose landmark if available
+    if (faceLandmarksRef.current.length > 0) {
+      const nose = faceLandmarksRef.current[1]; // landmark 1 = nose tip
+      ctx.fillStyle = "#ef4444";
+      ctx.beginPath();
+      ctx.arc(
+        nose.x * overlayCanvas.width,
+        nose.y * overlayCanvas.height,
+        10,
+        0,
+        2 * Math.PI
+      );
+      ctx.fill();
+    }
 
     // Draw wrist
     ctx.fillStyle = "#22c55e";
@@ -192,11 +200,17 @@ export default function ClientPage() {
         handsScript.src =
           "https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.min.js";
         handsScript.onload = () => {
-          const cameraScript = document.createElement("script");
-          cameraScript.src =
-            "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.min.js";
-          cameraScript.onload = () => resolve();
-          document.head.appendChild(cameraScript);
+          const faceMeshScript = document.createElement("script");
+          faceMeshScript.src =
+            "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.min.js";
+          faceMeshScript.onload = () => {
+            const cameraScript = document.createElement("script");
+            cameraScript.src =
+              "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.min.js";
+            cameraScript.onload = () => resolve();
+            document.head.appendChild(cameraScript);
+          };
+          document.head.appendChild(faceMeshScript);
         };
         document.head.appendChild(handsScript);
       });
@@ -217,6 +231,31 @@ export default function ClientPage() {
         if (!mountedRef.current) return;
 
         setStatus("Monitoring");
+
+        // Initialize MediaPipe Face Mesh first to get face landmarks
+        const faceMesh = new window.FaceMesh({
+          locateFile: (file: string) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`;
+          },
+        });
+
+        faceMesh.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+
+        faceMesh.onResults((results: any) => {
+          if (!mountedRef.current) return;
+          if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            faceLandmarksRef.current = results.multiFaceLandmarks[0];
+          } else {
+            faceLandmarksRef.current = [];
+          }
+        });
+
+        faceMeshInstanceRef.current = faceMesh;
 
         // Initialize MediaPipe Hands
         const hands = new window.Hands({
@@ -299,9 +338,9 @@ export default function ClientPage() {
 
         const camera = new window.Camera(video, {
           onFrame: async () => {
-            if (mountedRef.current) {
-              await hands.send({ image: video });
-            }
+            if (!mountedRef.current) return;
+            await faceMesh.send({ image: video });
+            await hands.send({ image: video });
           },
           width: 640,
           height: 480,
@@ -329,6 +368,9 @@ export default function ClientPage() {
       }
       if (handsInstanceRef.current) {
         handsInstanceRef.current.close();
+      }
+      if (faceMeshInstanceRef.current) {
+        faceMeshInstanceRef.current.close();
       }
       if (video.srcObject) {
         const tracks = (video.srcObject as MediaStream).getTracks();
