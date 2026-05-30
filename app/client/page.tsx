@@ -10,7 +10,7 @@ const REFERENCE_HAND_SIZE = 0.15; // normalized units, ~arm's length
 const FACE_DIST_THRESHOLD = 0.3;
 const PINCH_DIST_THRESHOLD = 0.1;
 const TRIGGER_TIME = 1500;
-const MIN_FACE_WIDTH = 0.15; // minimum face width (normalized) to be considered close enough
+const FACE_CENTER = { x: 0.5, y: 0.1 };
 
 // Status types
 type Status = "Idle" | "Monitoring" | "Alert triggered";
@@ -76,13 +76,6 @@ export default function ClientPage() {
   // Check if hand is near face using actual face landmarks
   const isHandNearFace = (handLandmarks: any[], threshold: number) => {
     if (faceLandmarksRef.current.length === 0) return false;
-
-    // Check face is close enough using face width (landmark 234 = left cheek, 454 = right cheek)
-    const leftCheek = faceLandmarksRef.current[234];
-    const rightCheek = faceLandmarksRef.current[454];
-    const faceWidth = Math.abs(rightCheek.x - leftCheek.x);
-    if (faceWidth < MIN_FACE_WIDTH) return false; // face too far away
-
     const nose = faceLandmarksRef.current[1]; // landmark 1 = nose tip in FaceMesh
     const wrist = handLandmarks[0];
     const thumbTip = handLandmarks[4];
